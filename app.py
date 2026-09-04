@@ -19,12 +19,30 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 USE_POSTGRES = bool(DATABASE_URL)
 
 
+class CompatCursor:
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def execute(self, sql, params=()):
+        if USE_POSTGRES:
+            sql = sql.replace("?", "%s")
+        return self._cursor.execute(sql, params)
+
+    def executemany(self, sql, params_seq):
+        if USE_POSTGRES:
+            sql = sql.replace("?", "%s")
+        return self._cursor.executemany(sql, params_seq)
+
+    def __getattr__(self, name):
+        return getattr(self._cursor, name)
+
+
 class CompatConnection:
     def __init__(self, conn):
         self._conn = conn
 
     def cursor(self):
-        return self._conn.cursor()
+        return CompatCursor(self._conn.cursor())
 
     def execute(self, sql, params=()):
         if USE_POSTGRES:
@@ -33,6 +51,9 @@ class CompatConnection:
 
     def commit(self):
         return self._conn.commit()
+
+    def rollback(self):
+        return self._conn.rollback()
 
     def close(self):
         return self._conn.close()
