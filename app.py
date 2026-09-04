@@ -3428,6 +3428,96 @@ def change_language():
     return redirect(url_for("settings"))
 
 
+
+@app.route("/settings/change-pin", methods=["GET", "POST"])
+def change_pin():
+    user = current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    message = ""
+    success = False
+
+    if request.method == "POST":
+        current_pin = request.form.get("current_pin", "").strip()
+        new_pin = request.form.get("new_pin", "").strip()
+        confirm_pin = request.form.get("confirm_pin", "").strip()
+
+        if not check_password_hash(user["transfer_pin"], current_pin):
+            message = "Current PIN is incorrect."
+        elif not new_pin.isdigit() or len(new_pin) != 4:
+            message = "New PIN must be exactly 4 digits."
+        elif new_pin != confirm_pin:
+            message = "New PINs do not match."
+        elif new_pin == current_pin:
+            message = "New PIN must be different from your current PIN."
+        else:
+            conn = db()
+            conn.execute(
+                "UPDATE users SET transfer_pin = ? WHERE id = ?",
+                (generate_password_hash(new_pin), user["id"])
+            )
+            conn.commit()
+            conn.close()
+            success = True
+
+    language = user["language"] or "English"
+
+    return page("Change Transfer PIN", render_template_string("""
+<div class="card">
+    <h2>🔐
+    {% if language == "Portuguese" %}Alterar PIN de Transferência
+    {% elif language == "Spanish" %}Cambiar PIN de Transferencia
+    {% else %}Change Transfer PIN{% endif %}
+    </h2>
+
+    {% if message %}
+    <div class="danger">{{ message }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div style="padding:14px;border-radius:12px;background:#dcfce7;color:#166534;font-weight:700;margin-bottom:16px;">
+        {% if language == "Portuguese" %}PIN alterado com sucesso.
+        {% elif language == "Spanish" %}PIN cambiado correctamente.
+        {% else %}Transfer PIN changed successfully.{% endif %}
+    </div>
+    {% endif %}
+
+    <form method="POST">
+
+        <label>Current Transfer PIN</label>
+        <input type="password"
+               name="current_pin"
+               inputmode="numeric"
+               maxlength="4"
+               pattern="[0-9]{4}"
+               required>
+
+        <label>New 4-digit PIN</label>
+        <input type="password"
+               name="new_pin"
+               inputmode="numeric"
+               maxlength="4"
+               pattern="[0-9]{4}"
+               required>
+
+        <label>Confirm New PIN</label>
+        <input type="password"
+               name="confirm_pin"
+               inputmode="numeric"
+               maxlength="4"
+               pattern="[0-9]{4}"
+               required>
+
+        <button type="submit">Change PIN</button>
+    </form>
+
+    <p style="text-align:center;margin-top:18px;">
+        <a href="/settings">← Back to Settings</a>
+    </p>
+</div>
+""", language=language))
+
 @app.route("/settings")
 def settings():
     user = current_user()
@@ -3668,7 +3758,7 @@ body {
 
 <div class="card">
 
-<a class="row" href="/settings">
+<a class="row" href="/settings/change-pin">
     <div class="icon">🔐</div>
     <div class="info">
         <div class="name">{% if user["language"] == "Portuguese" %}PIN de Transferência{% elif user["language"] == "Spanish" %}PIN de Transferencia{% else %}Transfer PIN{% endif %}</div>
