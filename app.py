@@ -1323,6 +1323,13 @@ body {
     justify-content: center;
     font-weight: 800;
     font-size: 18px;
+    overflow: hidden;
+}
+
+.profile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .balance-card {
@@ -1577,7 +1584,11 @@ body {
             </a>
 
             <a href="/profile" class="profile">
-                {{ user["username"][0]|upper }}
+                {% if user["profile_picture"] %}
+                    <img src="{{ user["profile_picture"] }}" alt="Profile picture">
+                {% else %}
+                    {{ user["username"][0]|upper }}
+                {% endif %}
             </a>
         </div>
     </div>
