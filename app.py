@@ -1,9 +1,13 @@
 import secrets
 from flask import Flask, request, redirect, url_for, session, render_template_string
 import sqlite3
+import os
 import random
 import string
 import uuid
+
+import psycopg
+from psycopg.rows import dict_row
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -11,9 +15,35 @@ app = Flask(__name__)
 app.secret_key = "primevault-local-simulator-secret"
 
 DATABASE = "primevault.db"
+DATABASE_URL = os.getenv("DATABASE_URL")
+USE_POSTGRES = bool(DATABASE_URL)
+
+
+class CompatConnection:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def cursor(self):
+        return self._conn.cursor()
+
+    def execute(self, sql, params=()):
+        if USE_POSTGRES:
+            sql = sql.replace("?", "%s")
+        return self._conn.execute(sql, params)
+
+    def commit(self):
+        return self._conn.commit()
+
+    def close(self):
+        return self._conn.close()
 
 
 def db():
+    if USE_POSTGRES:
+        return CompatConnection(
+            psycopg.connect(DATABASE_URL, row_factory=dict_row)
+        )
+
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
@@ -66,9 +96,14 @@ def init_db():
     conn = db()
     cur = conn.cursor()
 
-    cur.execute("""
+    if USE_POSTGRES:
+        id_type = "BIGSERIAL PRIMARY KEY"
+    else:
+        id_type = "INTEGER PRIMARY KEY AUTOINCREMENT"
+
+    cur.execute(f"""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             username TEXT UNIQUE NOT NULL,
             surname TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
@@ -85,9 +120,9 @@ def init_db():
         )
     """)
 
-    cur.execute("""
+    cur.execute(f"""
         CREATE TABLE IF NOT EXISTS accounts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             user_id INTEGER UNIQUE NOT NULL,
             account_number TEXT UNIQUE NOT NULL,
             bank_name TEXT NOT NULL,
@@ -98,9 +133,9 @@ def init_db():
         )
     """)
 
-    cur.execute("""
+    cur.execute(f"""
         CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             transaction_id TEXT UNIQUE NOT NULL,
             sender_user_id INTEGER,
             sender_name TEXT NOT NULL,
@@ -117,18 +152,18 @@ def init_db():
         )
     """)
 
-    cur.execute("""
+    cur.execute(f"""
         CREATE TABLE IF NOT EXISTS verification_codes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             user_id INTEGER NOT NULL,
             code TEXT NOT NULL,
             created_at TEXT NOT NULL
         )
     """)
 
-    cur.execute("""
+    cur.execute(f"""
         CREATE TABLE IF NOT EXISTS support_messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             user_id INTEGER NOT NULL,
             sender_role TEXT NOT NULL,
             message TEXT NOT NULL,
@@ -137,9 +172,9 @@ def init_db():
         )
     """)
 
-    cur.execute("""
+    cur.execute(f"""
         CREATE TABLE IF NOT EXISTS notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             user_id INTEGER NOT NULL,
             message TEXT NOT NULL,
             is_read INTEGER NOT NULL DEFAULT 0,
@@ -147,8 +182,7 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id)
         )
     """)
-    
-    # Create the PrimeVault administrator if one does not already exist.
+
     admin = cur.execute(
         "SELECT id FROM users WHERE username = ?",
         ("admin",)
@@ -179,7 +213,13 @@ def init_db():
             now
         ))
 
-        admin_id = cur.lastrowid
+        if USE_POSTGRES:
+            admin_id = cur.execute(
+                "SELECT id FROM users WHERE username = ?",
+                ("admin",)
+            ).fetchone()["id"]
+        else:
+            admin_id = cur.lastrowid
 
         cur.execute("""
             INSERT INTO accounts
@@ -197,7 +237,6 @@ def init_db():
 
     conn.commit()
     conn.close()
-
 
 def current_user():
     if "user_id" not in session:
@@ -602,7 +641,13 @@ def register():
                     now
                 ))
 
-                user_id = cur.lastrowid
+                if USE_POSTGRES:
+                    user_id = cur.execute(
+                        "SELECT id FROM users WHERE username = ?",
+                        (username,)
+                    ).fetchone()["id"]
+                else:
+                    user_id = cur.lastrowid
                 account_number = generate_account_number()
 
                 cur.execute("""
@@ -637,7 +682,7 @@ def register():
                     code=code
                 ))
 
-            except sqlite3.IntegrityError:
+            except (sqlite3.IntegrityError, psycopg.IntegrityError):
                 conn.rollback()
                 conn.close()
                 error = "Username, email or phone number already exists."
