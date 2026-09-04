@@ -2626,16 +2626,47 @@ body {
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <button class="btn secondary" type="button" onclick="shareReceipt()">📤 Share Receipt</button>
 <script>
-function shareReceipt() {
-    const text = "PrimeVault Transaction Receipt - ID: {{ tx["transaction_id"] }} - Amount: ${{ "{:,.2f}".format(tx["amount"]) }} - Sender: {{ tx["sender_name"] }} - Receiver: {{ tx["receiver_name"] }} - Status: Successful";
-    if (navigator.share) {
-        navigator.share({title:"PrimeVault Receipt", text:text}).catch(function(){});
-    } else if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(function(){ alert("Receipt copied."); });
-    } else {
-        alert(text);
+async function shareReceipt() {
+    const receipt = document.querySelector(".receipt");
+
+    if (!receipt || typeof html2canvas === "undefined") {
+        alert("Receipt image is not available yet.");
+        return;
+    }
+
+    try {
+        const canvas = await html2canvas(receipt, {
+            backgroundColor: "#ffffff",
+            scale: 2
+        });
+
+        const blob = await new Promise(resolve =>
+            canvas.toBlob(resolve, "image/png")
+        );
+
+        const file = new File(
+            [blob],
+            "PrimeVault-Receipt.png",
+            { type: "image/png" }
+        );
+
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                title: "PrimeVault Receipt",
+                files: [file]
+            });
+        } else {
+            const link = document.createElement("a");
+            link.download = "PrimeVault-Receipt.png";
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Unable to create the receipt image.");
     }
 }
 </script>
