@@ -197,6 +197,15 @@ def init_db():
         )
     """)
 
+    # Add image support to existing support conversations.
+    try:
+        cur.execute("SAVEPOINT support_image_migration")
+        cur.execute("ALTER TABLE support_messages ADD COLUMN image_data TEXT")
+        cur.execute("RELEASE SAVEPOINT support_image_migration")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT support_image_migration")
+        cur.execute("RELEASE SAVEPOINT support_image_migration")
+
     cur.execute(f"""
         CREATE TABLE IF NOT EXISTS notifications (
             id {id_type},
@@ -607,6 +616,92 @@ def page(title, body):
 <div class="container">
 {{ body|safe }}
 </div>
+
+<script>
+window.addEventListener("load", function () {
+    const help = document.querySelector(".help-floating");
+    if (!help) return;
+
+    let dragging = false;
+    let moved = false;
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+
+    help.style.touchAction = "none";
+
+    help.addEventListener("pointerdown", function (e) {
+        dragging = true;
+        moved = false;
+
+        const rect = help.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = rect.left;
+        startTop = rect.top;
+
+        try {
+            help.setPointerCapture(e.pointerId);
+        } catch (_) {}
+
+        e.preventDefault();
+    });
+
+    help.addEventListener("pointermove", function (e) {
+        if (!dragging) return;
+
+        e.preventDefault();
+
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+            moved = true;
+        }
+
+        const maxLeft = window.innerWidth - help.offsetWidth;
+        const maxTop = window.innerHeight - help.offsetHeight;
+
+        const newLeft = Math.max(0, Math.min(maxLeft, startLeft + dx));
+        const newTop = Math.max(0, Math.min(maxTop, startTop + dy));
+
+        help.style.left = newLeft + "px";
+        help.style.top = newTop + "px";
+        help.style.right = "auto";
+        help.style.bottom = "auto";
+    });
+
+    function stopDragging(e) {
+        if (!dragging) return;
+
+        dragging = false;
+
+        try {
+            help.releasePointerCapture(e.pointerId);
+        } catch (_) {}
+
+        if (moved) {
+            help.dataset.dragged = "true";
+
+            setTimeout(function () {
+                help.dataset.dragged = "false";
+            }, 300);
+        }
+    }
+
+    help.addEventListener("pointerup", stopDragging);
+    help.addEventListener("pointercancel", stopDragging);
+
+    help.addEventListener("click", function (e) {
+        if (help.dataset.dragged === "true") {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+});
+</script>
+
 </body>
 </html>
 """,
@@ -1288,6 +1383,24 @@ body {
     padding-bottom: 90px;
 }
 
+.help-floating {
+    position: fixed !important;
+    right: 18px !important;
+    left: auto !important;
+    bottom: 90px !important;
+    top: auto !important;
+    z-index: 9999 !important;
+    width: 52px;
+    height: 52px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.help-floating:active {
+    cursor: grabbing;
+}
+
 .header {
     background: #111827;
     color: white;
@@ -1671,7 +1784,21 @@ body {
 
 </div>
 
-<a href="/help" class="help-floating">💬 {{ d["help"] }}</a>
+<a href="/help" class="help-floating" aria-label="Help Center" title="Help Center">
+    <span style="display:flex;align-items:center;justify-content:center;
+                 width:52px;height:52px;border-radius:50%;
+                 background:#2563eb;color:white;
+                 box-shadow:0 6px 18px rgba(37,99,235,.35);">
+        <svg width="28" height="28" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 14v-2a8 8 0 0 1 16 0v2"/>
+            <path d="M4 14h2a2 2 0 0 1 2 2v2H6a2 2 0 0 1-2-2z"/>
+            <path d="M20 14h-2a2 2 0 0 0-2 2v2h2a2 2 0 0 0 2-2z"/>
+            <path d="M16 19h-3"/>
+        </svg>
+    </span>
+</a>
 
 <div class="bottom-nav">
 
@@ -3265,18 +3392,52 @@ def help_center():
 
     if request.method == "POST":
         message = request.form.get("message", "").strip()
+        picture = request.files.get("image")
 
-        if message:
+        image_data = None
+
+        if picture and picture.filename:
+            allowed = {
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+            }
+
+            if picture.mimetype not in allowed:
+                return render_template_string("""
+                <script>
+                    alert("Please select a JPG, PNG, or WEBP image.");
+                    window.location.href = "/help";
+                </script>
+                """)
+
+            data = picture.read()
+
+            if len(data) > 5 * 1024 * 1024:
+                return render_template_string("""
+                <script>
+                    alert("Image must be 5 MB or smaller.");
+                    window.location.href = "/help";
+                </script>
+                """)
+
+            import base64
+            image_data = (
+                f"data:{picture.mimetype};base64,"
+                + base64.b64encode(data).decode("ascii")
+            )
+
+        if message or image_data:
             conn = db()
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             conn.execute(
                 """
                 INSERT INTO support_messages
-                (user_id, sender_role, message, created_at)
-                VALUES (?, ?, ?, ?)
+                (user_id, sender_role, message, image_data, created_at)
+                VALUES (?, ?, ?, ?, ?)
                 """,
-                (user["id"], "user", message, now)
+                (user["id"], "user", message, image_data, now)
             )
 
             conn.commit()
@@ -3288,7 +3449,7 @@ def help_center():
 
     messages = conn.execute(
         """
-        SELECT sender_role, message, created_at
+        SELECT sender_role, message, image_data, created_at
         FROM support_messages
         WHERE user_id = ?
         ORDER BY id ASC
@@ -3301,13 +3462,16 @@ def help_center():
     chat = ""
 
     for msg in messages:
+        image_html = ""
+        if msg["image_data"]:
+            image_html = f'<img src="{msg["image_data"]}" alt="Support attachment" style="display:block;max-width:100%;max-height:300px;margin-top:8px;border-radius:12px;">'
         if msg["sender_role"] == "user":
             chat += f"""
             <div style="text-align:right;margin:10px 0;">
                 <div style="display:inline-block;max-width:80%;
                             background:#111827;color:white;
                             padding:12px;border-radius:16px 16px 4px 16px;">
-                    {msg["message"]}
+                    {msg["message"]}{image_html}
                     <div style="font-size:10px;opacity:.6;margin-top:5px;">
                         {msg["created_at"]}
                     </div>
@@ -3321,7 +3485,7 @@ def help_center():
                             background:#f1f5f9;color:#111827;
                             padding:12px;border-radius:16px 16px 16px 4px;">
                     <strong>PrimeVault Support</strong>
-                    <div>{msg["message"]}</div>
+                    <div>{msg["message"]}</div>{image_html}
                     <div style="font-size:10px;color:#64748b;margin-top:5px;">
                         {msg["created_at"]}
                     </div>
@@ -3338,6 +3502,18 @@ def help_center():
         """
 
     return page("Help Center", f"""
+<div style="position:relative;width:100%;height:30px;margin:0 0 10px 0;">
+    <button type="button"
+            onclick="history.back(); return false;"
+            style="position:absolute;left:0;top:0;width:auto;
+                   border:0;background:#eff6ff;color:#2563eb;
+                   padding:6px 10px;border-radius:8px;
+                   font-size:14px;font-weight:700;
+                   cursor:pointer;">
+        ← Back
+    </button>
+</div>
+
 <div class="card">
     <h2>Help Center</h2>
     <p style="color:#64748b;">
@@ -3368,20 +3544,37 @@ def help_center():
         {chat}
     </div>
 
-    <form method="POST" action="/help" style="margin-top:12px;">
+    <form method="POST"
+          action="/help"
+          enctype="multipart/form-data"
+          style="margin-top:12px;">
+
         <textarea name="message"
                   rows="3"
                   placeholder="Type your message..."
-                  required
                   style="width:100%;box-sizing:border-box;
                          padding:12px;border:1px solid #d1d5db;
                          border-radius:12px;resize:none;"></textarea>
 
-        <button type="submit"
-                style="width:100%;margin-top:10px;">
-            Send Message
-        </button>
-    </form>
+        <div style="margin-top:10px;">
+        <label style="display:block;
+                      padding:12px;text-align:center;
+                      border:1px dashed #cbd5e1;
+                      border-radius:12px;
+                      cursor:pointer;color:#475569;">
+            📷 Add Image
+            <input type="file"
+                   name="image"
+                   accept="image/jpeg,image/png,image/webp"
+                   style="display:none;"
+                   onchange="if (this.files.length) this.form.submit();">
+            <div class="image-name"
+                 style="font-size:12px;margin-top:5px;color:#94a3b8;">
+                Select a picture to send
+            </div>
+        </label>
+        </div>
+</form>
 </div>
 
 <div class="card" style="text-align:center;">
@@ -3447,7 +3640,7 @@ def admin_support():
         """, (selected_id,)).fetchone()
 
         conversation = conn.execute("""
-            SELECT sender_role, message, created_at
+            SELECT sender_role, message, image_data, created_at
             FROM support_messages
             WHERE user_id = ?
             ORDER BY id ASC
@@ -3487,17 +3680,21 @@ def admin_support():
         """
 
     conversation_html = ""
-
     for msg in conversation:
+        image_html = ""
+        if msg["image_data"]:
+            image_html = f'<img src="{msg["image_data"]}" alt="Support attachment" style="display:block;max-width:100%;max-height:300px;margin-top:8px;border-radius:12px;">'
+
         if msg["sender_role"] == "admin":
             conversation_html += f"""
             <div style="display:flex;justify-content:flex-end;margin:10px 0;">
                 <div style="max-width:82%;background:#111827;color:white;
-                            padding:11px 14px;border-radius:16px 16px 4px 16px;">
+                             padding:11px 14px;border-radius:16px 16px 4px 16px;">
                     <strong style="display:block;margin-bottom:4px;">
                         You — Admin
                     </strong>
                     <div>{msg["message"]}</div>
+                    {image_html}
                     <small style="opacity:.65;">{msg["created_at"]}</small>
                 </div>
             </div>
@@ -3506,11 +3703,12 @@ def admin_support():
             conversation_html += f"""
             <div style="display:flex;justify-content:flex-start;margin:10px 0;">
                 <div style="max-width:82%;background:#f1f5f9;color:#111827;
-                            padding:11px 14px;border-radius:16px 16px 16px 4px;">
+                             padding:11px 14px;border-radius:16px 16px 16px 4px;">
                     <strong style="display:block;margin-bottom:4px;">
                         Customer
                     </strong>
                     <div>{msg["message"]}</div>
+                    {image_html}
                     <small style="color:#64748b;">{msg["created_at"]}</small>
                 </div>
             </div>
@@ -3536,11 +3734,30 @@ def admin_support():
 
             <form method="POST"
                   action="/admin/support/reply/{selected_user["id"]}"
+                                  enctype="multipart/form-data"
                   style="margin-top:12px;">
-                <textarea name="message"
+                
+<label style="display:block;margin-top:10px;
+              padding:12px;text-align:center;
+              border:1px dashed #cbd5e1;
+              border-radius:12px;
+              cursor:pointer;color:#475569;">
+    📷 Add Image
+    <input type="file"
+           name="image"
+           accept="image/jpeg,image/png,image/webp"
+           style="display:none;"
+           onchange="if (this.files.length) this.form.submit();">
+    <div class="admin-image-name"
+         style="font-size:12px;margin-top:5px;color:#94a3b8;">
+        No image selected
+    </div>
+</label>
+
+<textarea name="message"
                           rows="3"
                           placeholder="Reply to this customer..."
-                          required
+                          
                           style="width:100%;padding:12px;border-radius:12px;
                                  border:1px solid #d1d5db;
                                  box-sizing:border-box;
@@ -3550,7 +3767,16 @@ def admin_support():
                         style="width:100%;margin-top:10px;">
                     Send Reply
                 </button>
-            </form>
+            
+<button type="submit"
+        id="admin-image-send-button"
+        style="display:none;position:fixed;right:20px;bottom:155px;
+               width:56px;height:56px;border:0;border-radius:50%;
+               background:#2563eb;color:white;font-size:28px;font-weight:bold;
+               align-items:center;justify-content:center;
+               box-shadow:0 6px 20px rgba(37,99,235,.4);
+               z-index:10000;cursor:pointer;">▶</button>
+</form>
         </div>
         """
 
@@ -3587,8 +3813,41 @@ def admin_support_reply(user_id):
         return redirect(url_for("login"))
 
     message = request.form.get("message", "").strip()
+    picture = request.files.get("image")
+    image_data = None
 
-    if message:
+    if picture and picture.filename:
+        allowed = {
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        }
+
+        if picture.mimetype not in allowed:
+            return render_template_string("""
+            <script>
+                alert("Please select a JPG, PNG, or WEBP image.");
+                window.location.href = "/admin/support";
+            </script>
+            """)
+
+        data = picture.read()
+
+        if len(data) > 5 * 1024 * 1024:
+            return render_template_string("""
+            <script>
+                alert("Image must be 5 MB or smaller.");
+                window.location.href = "/admin/support";
+            </script>
+            """)
+
+        import base64
+        image_data = (
+            f"data:{picture.mimetype};base64,"
+            + base64.b64encode(data).decode("ascii")
+        )
+
+    if message or image_data:
         conn = db()
 
         exists = conn.execute("""
@@ -3602,9 +3861,9 @@ def admin_support_reply(user_id):
 
             conn.execute("""
                 INSERT INTO support_messages
-                (user_id, sender_role, message, created_at)
-                VALUES (?, ?, ?, ?)
-            """, (user_id, "admin", message, now))
+                (user_id, sender_role, message, image_data, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, "admin", message, image_data, now))
 
             conn.execute("""
                 INSERT INTO notifications
