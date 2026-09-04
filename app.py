@@ -260,6 +260,8 @@ def init_db():
             1000000000.00
         ))
 
+    # Account activation column is managed by the existing database schema.
+
     conn.commit()
     conn.close()
 
@@ -268,11 +270,18 @@ def current_user():
         return None
 
     conn = db()
-    user = conn.execute(
-        "SELECT * FROM users WHERE id = ?",
-        (session["user_id"],)
-    ).fetchone()
+    user = conn.execute("""
+        SELECT u.*, a.active AS account_active
+        FROM users u
+        LEFT JOIN accounts a ON a.user_id = u.id
+        WHERE u.id = ?
+    """, (session["user_id"],)).fetchone()
     conn.close()
+
+    if user and user["role"] != "admin" and user["account_active"] == 0:
+        session.pop("user_id", None)
+        return None
+
     return user
 
 
@@ -536,6 +545,61 @@ def page(title, body):
             color: #6b7280;
             font-size: 13px;
         }
+
+        .switch-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+        }
+
+        .switch-label {
+            font-weight: bold;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 54px;
+            height: 30px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            margin: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: #9ca3af;
+            border-radius: 30px;
+            transition: .2s;
+        }
+
+        .slider:before {
+            content: "";
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            left: 4px;
+            top: 4px;
+            background: white;
+            border-radius: 50%;
+            transition: .2s;
+            box-shadow: 0 1px 4px rgba(0,0,0,.25);
+        }
+
+        .switch input:checked + .slider {
+            background: #16a34a;
+        }
+
+        .switch input:checked + .slider:before {
+            transform: translateX(24px);
+        }
     </style>
 </head>
 <body>
@@ -573,21 +637,26 @@ def login():
 
         conn = db()
         user = conn.execute("""
-            SELECT * FROM users
-            WHERE username = ? OR email = ? OR phone = ?
+            SELECT u.*, a.active AS account_active
+            FROM users u
+            LEFT JOIN accounts a ON a.user_id = u.id
+            WHERE u.username = ? OR u.email = ? OR u.phone = ?
         """, (identifier, identifier, identifier)).fetchone()
         conn.close()
 
         if user and check_password_hash(user["password"], password):
-            session["user_id"] = user["id"]
+            if user["role"] != "admin" and user["account_active"] == 0:
+                message = "This account has been deactivated by the administrator."
+            else:
+                session["user_id"] = user["id"]
 
-            if not user["verified"]:
-                return redirect(url_for("verify", user_id=user["id"]))
+                if not user["verified"]:
+                    return redirect(url_for("verify", user_id=user["id"]))
 
-            if user["role"] == "admin":
-                return redirect(url_for("admin"))
+                if user["role"] == "admin":
+                    return redirect(url_for("admin"))
 
-            return redirect(url_for("dashboard"))
+                return redirect(url_for("dashboard"))
 
         message = "Invalid login details."
 
@@ -1162,7 +1231,7 @@ def dashboard():
     notification_count = conn.execute("""
         SELECT COUNT(*) FROM notifications
         WHERE user_id = ? AND is_read = 0
-    """, (user["id"],)).fetchone()[0]
+    """, (user["id"],)).fetchone()["count"]
 
     conn.close()
     transactions_html = ""
@@ -1684,16 +1753,7 @@ def transfer():
 
     if request.method == "POST":
 
-        if not account["transfer_enabled"]:
-            conn.close()
-            
-
-            return render_template_string("""
-            <script>
-            alert("You will need to activate your account before transferring.");
-            window.location.href="/transfer";
-            </script>
-            """)
+        transfers_blocked = not account["transfer_enabled"]
 
         transfer_type = request.form.get("transfer_type", "primevault")
         receiver_account = request.form.get("receiver_account", "").strip()
@@ -1776,19 +1836,20 @@ def transfer():
             receiver_name = f'{receiver["username"]} {receiver["surname"]}'
             receiver_bank = receiver["bank_name"]
 
-            conn.execute("""
-                UPDATE accounts
-                SET balance = balance - ?
-                WHERE user_id = ?
-            """, (amount, user["id"]))
-
-            conn.execute("""
-                UPDATE accounts
-                SET balance = balance + ?
-                WHERE user_id = ?
-            """, (amount, receiver["id"]))
-
             receiver_user_id = receiver["id"]
+
+            if not transfers_blocked:
+                conn.execute("""
+                    UPDATE accounts
+                    SET balance = balance - ?
+                    WHERE user_id = ?
+                """, (amount, user["id"]))
+
+                conn.execute("""
+                    UPDATE accounts
+                    SET balance = balance + ?
+                    WHERE user_id = ?
+                """, (amount, receiver["id"]))
 
         else:
 
@@ -1803,11 +1864,12 @@ def transfer():
 
             receiver_user_id = None
 
-            conn.execute("""
-                UPDATE accounts
-                SET balance = balance - ?
-                WHERE user_id = ?
-            """, (amount, user["id"]))
+            if not transfers_blocked:
+                conn.execute("""
+                    UPDATE accounts
+                    SET balance = balance - ?
+                    WHERE user_id = ?
+                """, (amount, user["id"]))
 
         conn.execute("""
             INSERT INTO transactions (
@@ -1838,7 +1900,7 @@ def transfer():
             receiver_bank,
             amount,
             description,
-            "Successful",
+            "Failed" if transfers_blocked else "Successful",
             now
         ))
 
@@ -2462,6 +2524,10 @@ body {
     color:#16a34a;
 }
 
+.status.failed {
+    color:#dc2626;
+}
+
 .footer {
     padding:24px 20px 22px;
 }
@@ -2517,11 +2583,11 @@ body {
 
 <div class="success">
 
-    <div class="success-icon">✓</div>
+    <div class="success-icon">{% if tx["status"] == "Failed" %}✕{% else %}✓{% endif %}</div>
 
-    <h1>{% if user["language"] == "Portuguese" %}Transferência Concluída{% elif user["language"] == "Spanish" %}Transferencia Exitosa{% else %}Transfer Successful{% endif %}</h1>
+    <h1>{% if tx["status"] == "Failed" %}{% if user["language"] == "Portuguese" %}Transferência Falhou{% elif user["language"] == "Spanish" %}Transferencia Fallida{% else %}Transfer Unsuccessful{% endif %}{% else %}{% if user["language"] == "Portuguese" %}Transferência Concluída{% elif user["language"] == "Spanish" %}Transferencia Exitosa{% else %}Transfer Successful{% endif %}{% endif %}</h1>
 
-    <p>{% if user["language"] == "Portuguese" %}Sua transferência simulada foi concluída com sucesso.{% elif user["language"] == "Spanish" %}Tu transferencia simulada se completó correctamente.{% else %}Your simulated transfer was completed successfully.{% endif %}</p>
+    <p>{% if tx["status"] == "Failed" %}{% if user["language"] == "Portuguese" %}Sua transferência simulada não foi concluída.{% elif user["language"] == "Spanish" %}Tu transferencia simulada no se completó.{% else %}Your simulated transfer was not completed.{% endif %}{% else %}{% if user["language"] == "Portuguese" %}Sua transferência simulada foi concluída com sucesso.{% elif user["language"] == "Spanish" %}Tu transferencia simulada se completó correctamente.{% else %}Your simulated transfer was completed successfully.{% endif %}{% endif %}</p>
 
 </div>
 
@@ -2557,7 +2623,7 @@ body {
 
 <div class="row">
     <div class="label">Status</div>
-    <div class="value status">{% if user["language"] == "Portuguese" %}Sucesso{% elif user["language"] == "Spanish" %}Exitoso{% else %}Successful{% endif %}</div>
+    <div class="value status{% if tx["status"] == "Failed" %} failed{% endif %}">{% if tx["status"] == "Failed" %}{% if user["language"] == "Portuguese" %}Falhou{% elif user["language"] == "Spanish" %}Fallido{% else %}Failed{% endif %}{% else %}{% if user["language"] == "Portuguese" %}Sucesso{% elif user["language"] == "Spanish" %}Exitoso{% else %}Successful{% endif %}{% endif %}</div>
 </div>
 
 </div>
@@ -3949,7 +4015,7 @@ def admin():
     users = conn.execute(
         """
         SELECT u.*, a.account_number, a.balance,
-               a.transfer_enabled, a.account_limit
+               a.transfer_enabled, a.active, a.account_limit
         FROM users u
         JOIN accounts a ON a.user_id = u.id
         WHERE u.role = 'user'
@@ -3964,17 +4030,37 @@ def admin():
     for u in users:
         status = "ON" if u["transfer_enabled"] else "OFF"
         switch_text = "Turn Transfers OFF" if u["transfer_enabled"] else "Turn Transfers ON"
+        active_status = "ACTIVE" if u["active"] else "DEACTIVATED"
+        active_text = "Deactivate User" if u["active"] else "Activate User"
 
         user_cards += f"""
 <div class="card">
     <h3>{u["username"]} {u["surname"]}</h3>
     <p>Account: {u["account_number"]}</p>
     <p>Balance: ${u["balance"]:,.2f}</p>
-    <p>Transfers: <b>{status}</b></p>
+    <div class="switch-row">
+        <span class="switch-label">Account Status</span>
+        <form method="POST" action="{url_for('toggle_active', user_id=u['id'])}">
+            <label class="switch" title="{active_status}">
+                <input type="checkbox"
+                       onchange="this.form.submit()"
+                       {"checked" if u["active"] else ""}>
+                <span class="slider"></span>
+            </label>
+        </form>
+    </div>
 
-    <form method="POST" action="{url_for('toggle_transfer', user_id=u['id'])}">
-        <button type="submit">{switch_text}</button>
-    </form>
+    <div class="switch-row">
+        <span class="switch-label">Transfers</span>
+        <form method="POST" action="{url_for('toggle_transfer', user_id=u['id'])}">
+            <label class="switch" title="{status}">
+                <input type="checkbox"
+                       onchange="this.form.submit()"
+                       {"checked" if u["transfer_enabled"] else ""}>
+                <span class="slider"></span>
+            </label>
+        </form>
+    </div>
 
     <form method="POST" action="{url_for('fund_user', user_id=u['id'])}">
         <input type="number"
@@ -4066,6 +4152,30 @@ function copyRegistrationLink() {{
 """
 
     return page("Admin Panel", html)
+
+
+@app.route("/admin/toggle-active/<int:user_id>", methods=["POST"])
+def toggle_active(user_id):
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+
+    conn = db()
+    account = conn.execute(
+        "SELECT active FROM accounts WHERE user_id = ?",
+        (user_id,)
+    ).fetchone()
+
+    if account:
+        new_value = 0 if account["active"] else 1
+        conn.execute(
+            "UPDATE accounts SET active = ? WHERE user_id = ?",
+            (new_value, user_id)
+        )
+        conn.commit()
+
+    conn.close()
+    return redirect(url_for("admin"))
 
 
 @app.route("/admin/toggle-transfer/<int:user_id>", methods=["POST"])
