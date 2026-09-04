@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.db
+boot.log
+app.py.backup*
+app.py.before*
+app.py.clean*
