@@ -20,11 +20,6 @@ app.secret_key = "primevault-local-simulator-secret"
 
 DATABASE = "primevault.db"
 DATABASE_URL = os.getenv("DATABASE_URL")
-IS_RENDER = bool(os.getenv("RENDER"))
-
-if IS_RENDER and not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL is required on Render. Refusing to fall back to SQLite.")
-
 USE_POSTGRES = bool(DATABASE_URL)
 
 
