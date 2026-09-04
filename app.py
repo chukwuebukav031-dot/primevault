@@ -6,8 +6,12 @@ import random
 import string
 import uuid
 
-import psycopg
-from psycopg.rows import dict_row
+try:
+    import psycopg
+    from psycopg.rows import dict_row
+except ImportError:
+    psycopg = None
+    dict_row = None
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -590,20 +594,194 @@ def login():
     return page("Login", f"""
 <div class="card">
     <h2>Welcome to PrimeVault</h2>
+
     {f'<div class="danger">{message}</div>' if message else ''}
+
     <form method="POST">
+
         <label>Username, email or phone</label>
         <input name="identifier" required>
 
         <label>Password</label>
-        <input type="password" name="password" required>
+
+        <div style="position:relative;width:100%;">
+            <input id="loginPassword"
+                   type="password"
+                   name="password"
+                   required
+                   style="width:100%;
+                          padding-right:52px;
+                          box-sizing:border-box;">
+
+            <button type="button"
+                    onclick="toggleLoginPassword()"
+                    aria-label="Show or hide password"
+                    style="position:absolute;
+                           right:6px;
+                           top:50%;
+                           transform:translateY(-50%);
+                           width:40px;
+                           height:40px;
+                           border:0;
+                           background:transparent;
+                           padding:8px;
+                           cursor:pointer;
+                           display:flex;
+                           align-items:center;
+                           justify-content:center;
+                           color:#374151;">
+
+                <svg id="eyeIcon"
+                     width="22"
+                     height="22"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/>
+                    <circle cx="12" cy="12" r="2.5"/>
+                </svg>
+            </button>
+        </div>
+
+        <div style="text-align:right;margin:10px 0 18px;">
+            <a href="/forgot-password"
+               style="color:#2563eb;
+                      text-decoration:none;
+                      font-weight:700;">
+                Forgot password?
+            </a>
+        </div>
 
         <button type="submit">Login</button>
+
     </form>
 
-    <p>New user? <a href="{url_for('register')}">Create an account</a></p>
+    <p>
+        New user?
+        <a href="{url_for('register')}">Create an account</a>
+    </p>
 </div>
+
+<script>
+function toggleLoginPassword() {{
+    const input = document.getElementById("loginPassword");
+
+    if (input.type === "password") {{
+        input.type = "text";
+    }} else {{
+        input.type = "password";
+    }}
+}}
+</script>
 """)
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    message = ""
+    user_id = request.args.get("user_id", type=int)
+    local_code = request.args.get("local_code", "")
+    code_sent = bool(user_id and local_code)
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        code = request.form.get("code", "").strip()
+        new_password = request.form.get("new_password", "")
+
+        conn = db()
+
+        if not user_id:
+            user = conn.execute(
+                "SELECT id FROM users WHERE email = ?",
+                (email,)
+            ).fetchone()
+
+            if user:
+                local_code = generate_code()
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                conn.execute(
+                    "INSERT INTO verification_codes (user_id, code, created_at) VALUES (?, ?, ?)",
+                    (user["id"], local_code, now)
+                )
+                conn.commit()
+                conn.close()
+
+                return redirect(url_for(
+                    "forgot_password",
+                    user_id=user["id"],
+                    local_code=local_code
+                ))
+
+            conn.close()
+            message = "No account was found with that email."
+
+        else:
+            record = conn.execute(
+                """
+                SELECT code FROM verification_codes
+                WHERE user_id = ?
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (user_id,)
+            ).fetchone()
+
+            if record and code == record["code"] and len(new_password) >= 6:
+                conn.execute(
+                    "UPDATE users SET password = ? WHERE id = ?",
+                    (generate_password_hash(new_password), user_id)
+                )
+                conn.commit()
+                conn.close()
+                return redirect(url_for("login"))
+
+            conn.close()
+            message = "Invalid reset code or password."
+
+    if code_sent:
+        form = """
+        <p>Your local reset code is:</p>
+        <h2 style="text-align:center;letter-spacing:4px;">%s</h2>
+
+        <form method="POST">
+            <label>Reset code</label>
+            <input name="code" required>
+
+            <label>New password</label>
+            <input type="password" name="new_password" minlength="6" required>
+
+            <button type="submit">Reset Password</button>
+        </form>
+        """ % local_code
+    else:
+        form = """
+        <form method="POST">
+            <label>Registered email</label>
+            <input type="email" name="email" required>
+
+            <button type="submit">Send Reset Code</button>
+        </form>
+        """
+
+    return page("Forgot Password", """
+<div class="card">
+    <h2>Forgot Password</h2>
+
+    %s
+
+    %s
+
+    <p style="text-align:center;margin-top:16px;">
+        <a href="/login">← Back to Login</a>
+    </p>
+</div>
+""" % (
+        '<div class="danger">%s</div>' % message if message else "",
+        form
+    ))
 
 
 @app.route("/register", methods=["GET", "POST"])
