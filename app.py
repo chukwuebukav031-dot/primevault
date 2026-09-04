@@ -1,5 +1,5 @@
 import secrets
-from flask import Flask, request, redirect, url_for, session, render_template_string
+from flask import Flask, request, redirect, url_for, session, render_template_string, send_file
 import sqlite3
 import os
 import random
@@ -2815,6 +2815,58 @@ def transactions():
 """)
 
 
+
+@app.route("/profile-picture", methods=["POST"])
+def profile_picture():
+    user = current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    picture = request.files.get("profile_picture")
+
+    if not picture or not picture.filename:
+        return redirect(url_for("profile"))
+
+    allowed = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+    }
+
+    extension = allowed.get(picture.mimetype)
+    if not extension:
+        return render_template_string("""
+        <script>
+            alert("Please select a JPG, PNG, or WEBP image.");
+            window.location.href = "/profile";
+        </script>
+        """)
+
+    data = picture.read()
+
+    if len(data) > 5 * 1024 * 1024:
+        return render_template_string("""
+        <script>
+            alert("Profile picture must be 5 MB or smaller.");
+            window.location.href = "/profile";
+        </script>
+        """)
+
+    picture_data = f"data:{picture.mimetype};base64,"
+    import base64
+    picture_data += base64.b64encode(data).decode("ascii")
+
+    conn = db()
+    conn.execute("""
+        UPDATE users
+        SET profile_picture = ?
+        WHERE id = ?
+    """, (picture_data, user["id"]))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("profile"))
+
 @app.route("/profile")
 def profile():
     user = current_user()
@@ -2898,6 +2950,36 @@ body {
     justify-content:center;
     font-size:32px;
     font-weight:800;
+}
+
+.avatar {
+    overflow:hidden;
+}
+
+.avatar img {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+
+.photo-form {
+    margin-top:14px;
+}
+
+.photo-button {
+    display:inline-block;
+    padding:10px 16px;
+    border-radius:12px;
+    background:#111827;
+    color:white;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    border:0;
+}
+
+.photo-input {
+    display:none;
 }
 
 .name {
@@ -3011,8 +3093,19 @@ body {
     <div class="profile-card">
 
         <div class="avatar">
-            {{ initial }}
-        </div>
+    {% if user["profile_picture"] %}
+        <img src="{{ user["profile_picture"] }}" alt="Profile picture">
+    {% else %}
+        {{ initial }}
+    {% endif %}
+</div>
+
+<form class="photo-form" method="POST" action="/profile-picture" enctype="multipart/form-data">
+    <label class="photo-button">
+        {% if user["language"] == "Portuguese" %}Alterar Foto{% elif user["language"] == "Spanish" %}Cambiar Foto{% else %}Change Photo{% endif %}
+        <input class="photo-input" type="file" name="profile_picture" accept="image/jpeg,image/png,image/webp" onchange="this.form.submit()">
+    </label>
+</form>
 
         <div class="name">
             {{ full_name }}
