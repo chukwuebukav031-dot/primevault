@@ -4375,18 +4375,46 @@ def admin():
         (user["id"],)
     ).fetchone()
 
-    users = conn.execute(
-        """
-        SELECT u.*, a.account_number, a.balance,
-               a.transfer_enabled, a.active, a.account_limit
-        FROM users u
-        JOIN accounts a ON a.user_id = u.id
-        WHERE u.role = 'user'
-        ORDER BY u.id DESC
-        """
-    ).fetchall()
+    search = request.args.get("search", "").strip()
+
+    if search:
+        search_like = f"%{search}%"
+        users = conn.execute(
+            """
+            SELECT u.*, a.account_number, a.balance,
+                   a.transfer_enabled, a.active, a.account_limit
+            FROM users u
+            JOIN accounts a ON a.user_id = u.id
+            WHERE u.role = 'user'
+              AND (
+                  u.username LIKE ?
+                  OR u.surname LIKE ?
+                  OR a.account_number LIKE ?
+              )
+            ORDER BY u.id DESC
+            """,
+            (search_like, search_like, search_like)
+        ).fetchall()
+    else:
+        users = conn.execute(
+            """
+            SELECT u.*, a.account_number, a.balance,
+                   a.transfer_enabled, a.active, a.account_limit
+            FROM users u
+            JOIN accounts a ON a.user_id = u.id
+            WHERE u.role = 'user'
+            ORDER BY u.id DESC
+            """
+        ).fetchall()
 
     conn.close()
+
+
+    total_users = len(users)
+    active_users = sum(1 for u in users if u["active"])
+    deactivated_users = total_users - active_users
+
+
 
     user_cards = ""
 
@@ -4401,6 +4429,13 @@ def admin():
     <h3>{u["username"]} {u["surname"]}</h3>
     <p>Account: {u["account_number"]}</p>
     <p>Balance: ${u["balance"]:,.2f}</p>
+        <a href="/admin/user/{u['id']}"
+           style="display:block;text-align:center;padding:11px;
+                  margin:10px 0;border-radius:10px;
+                  background:#2563eb;color:white;
+                  text-decoration:none;font-weight:800;">
+            View Details
+        </a>
     <div class="switch-row">
         <span class="switch-label">Account Status</span>
         <form method="POST" action="{url_for('toggle_active', user_id=u['id'])}">
@@ -4490,7 +4525,35 @@ def admin():
     </p>
 </div>
 
+<div style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 18px;">
+    <div class="card" style="flex:1 1 150px;text-align:center;margin:0;">
+        <div style="font-size:28px;font-weight:800;">{total_users}</div>
+        <div>👥 Total Registered Users</div>
+    </div>
+
+    <div class="card" style="flex:1 1 150px;text-align:center;margin:0;">
+        <div style="font-size:28px;font-weight:800;">{active_users}</div>
+        <div>🟢 Active Users</div>
+    </div>
+
+    <div class="card" style="flex:1 1 150px;text-align:center;margin:0;">
+        <div style="font-size:28px;font-weight:800;">{deactivated_users}</div>
+        <div>🔴 Deactivated Users</div>
+    </div>
+</div>
+
 <h2>User Management</h2>
+<form method="GET" action="/admin" style="margin:10px 0 18px;">
+    <input type="text"
+           name="search"
+           value=""
+           placeholder="🔎 Search users..."
+           style="width:100%;padding:13px;
+                  border:1px solid #d1d5db;
+                  border-radius:10px;
+                  box-sizing:border-box;">
+    <button type="submit">Search</button>
+</form>
 
 {user_cards if user_cards else '<div class="card">No registered users yet.</div>'}
 
@@ -4515,6 +4578,139 @@ function copyRegistrationLink() {{
 """
 
     return page("Admin Panel", html)
+
+
+@app.route("/admin/user/<int:user_id>")
+def admin_user_details(user_id):
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+
+    conn = db()
+    account = conn.execute(
+        """
+        SELECT u.*, a.account_number, a.balance,
+               a.transfer_enabled, a.active, a.account_limit
+        FROM users u
+        JOIN accounts a ON a.user_id = u.id
+        WHERE u.id = ? AND u.role = 'user'
+        """,
+        (user_id,)
+    ).fetchone()
+    conn.close()
+
+    if not account:
+        return page("User Not Found", """
+        <div class="card">
+            <h2>User Not Found</h2>
+            <p>No registered user was found.</p>
+            <a href="/admin">Back to Admin</a>
+        </div>
+        """)
+
+    status = "ACTIVE" if account["active"] else "DEACTIVATED"
+    transfers = "ON" if account["transfer_enabled"] else "OFF"
+
+    html = f"""
+    <div class="card">
+        <h2>User Details</h2>
+        <h3>{account["username"]} {account["surname"]}</h3>
+
+        <p><strong>Username:</strong> {account["username"]}</p>
+        <p><strong>Surname:</strong> {account["surname"]}</p>
+        <p><strong>Account Number:</strong> {account["account_number"]}</p>
+        <p><strong>Balance:</strong> ${account["balance"]:,.2f}</p>
+        <p><strong>Account Status:</strong> {status}</p>
+        <p><strong>Transfers:</strong> {transfers}</p>
+        <p><strong>Account Limit:</strong> ${account["account_limit"]:,.2f}</p>
+
+        <form method="POST"
+              action="/admin/set-limit/{account['id']}"
+              style="margin-top:10px;">
+            <input type="number"
+                   name="account_limit"
+                   min="0.01"
+                   step="0.01"
+                   placeholder="New account limit"
+                   required>
+            <button type="submit">Update Account Limit</button>
+        </form>
+
+        <hr style="margin:20px 0;border:0;border-top:1px solid #e5e7eb;">
+
+        <h3>🔐 Reset User Password</h3>
+        <form method="POST"
+              action="/admin/reset-password/{account['id']}">
+            <input type="password"
+                   name="new_password"
+                   minlength="6"
+                   placeholder="Enter new password"
+                   required>
+            <button type="submit">Reset Password</button>
+        </form>
+
+        <a href="/admin"
+           style="display:block;text-align:center;padding:13px;
+                  margin-top:18px;border-radius:10px;
+                  background:#111827;color:white;
+                  text-decoration:none;font-weight:800;">
+            Back to User Management
+        </a>
+    </div>
+    """
+
+    return page("User Details", html)
+
+
+@app.route("/admin/reset-password/<int:user_id>", methods=["POST"])
+def admin_reset_password(user_id):
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+
+    new_password = request.form.get("new_password", "").strip()
+
+    if len(new_password) < 6:
+        return redirect(url_for("admin_user_details", user_id=user_id))
+
+    conn = db()
+    conn.execute(
+        "UPDATE users SET password = ? WHERE id = ? AND role = 'user'",
+        (generate_password_hash(new_password), user_id)
+    )
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("admin_user_details", user_id=user_id))
+
+
+@app.route("/admin/set-limit/<int:user_id>", methods=["POST"])
+def set_account_limit(user_id):
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+
+    try:
+        new_limit = float(request.form.get("account_limit", "0"))
+    except ValueError:
+        return redirect(url_for("admin_user_details", user_id=user_id))
+
+    if new_limit <= 0:
+        return redirect(url_for("admin_user_details", user_id=user_id))
+
+    conn = db()
+    conn.execute(
+        """
+        UPDATE accounts
+        SET account_limit = ?
+        WHERE user_id = ?
+        """,
+        (new_limit, user_id)
+    )
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("admin_user_details", user_id=user_id))
 
 
 @app.route("/admin/toggle-active/<int:user_id>", methods=["POST"])
