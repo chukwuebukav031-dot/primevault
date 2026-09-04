@@ -2626,6 +2626,19 @@ body {
 
 </div>
 
+<button class="btn secondary" type="button" onclick="shareReceipt()">📤 Share Receipt</button>
+<script>
+function shareReceipt() {
+    const text = "PrimeVault Transaction Receipt - ID: {{ tx["transaction_id"] }} - Amount: ${{ "{:,.2f}".format(tx["amount"]) }} - Sender: {{ tx["sender_name"] }} - Receiver: {{ tx["receiver_name"] }} - Status: Successful";
+    if (navigator.share) {
+        navigator.share({title:"PrimeVault Receipt", text:text}).catch(function(){});
+    } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function(){ alert("Receipt copied."); });
+    } else {
+        alert(text);
+    }
+}
+</script>
 </div>
 
 
