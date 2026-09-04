@@ -681,7 +681,32 @@ def register():
         <input name="transfer_pin" inputmode="numeric" maxlength="4" required>
 
         <label>Country</label>
-        <input name="country" required>
+        <select name="country" required>
+            <option value="">Select country</option>
+            <option value="Nigeria">Nigeria</option>
+            <option value="Brazil">Brazil</option>
+            <option value="Ecuador">Ecuador</option>
+            <option value="United States">United States</option>
+            <option value="United Kingdom">United Kingdom</option>
+            <option value="Ghana">Ghana</option>
+            <option value="Canada">Canada</option>
+            <option value="Australia">Australia</option>
+            <option value="Portugal">Portugal</option>
+            <option value="Spain">Spain</option>
+            <option value="France">France</option>
+            <option value="Germany">Germany</option>
+            <option value="South Africa">South Africa</option>
+            <option value="Mexico">Mexico</option>
+            <option value="India">India</option>
+            <option value="United Arab Emirates">United Arab Emirates</option>
+            <option value="Japan">Japan</option>
+            <option value="China">China</option>
+            <option value="Italy">Italy</option>
+            <option value="Netherlands">Netherlands</option>
+            <option value="Ireland">Ireland</option>
+            <option value="New Zealand">New Zealand</option>
+            <option value="Kenya">Kenya</option>
+        </select>
 
         <label>Gender</label>
         <select name="gender" required>
@@ -710,7 +735,31 @@ def created():
     <h2>{account_number}</h2>
 
     <p>Local verification code:</p>
-    <h2>{code}</h2>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+        <h2 id="verificationCode" style="margin:0;">{code}</h2>
+        <button type="button"
+                onclick="copyVerificationCode()"
+                aria-label="Copy verification code"
+                style="border:0;background:transparent;cursor:pointer;font-size:18px;padding:4px;">
+            📋
+        </button>
+    </div>
+
+    <script>
+    function copyVerificationCode() {{
+        const code = document.getElementById("verificationCode").textContent.trim();
+
+        if (navigator.clipboard) {{
+            navigator.clipboard.writeText(code).then(() => {{
+                alert("Verification code copied.");
+            }}).catch(() => {{
+                alert("Unable to copy verification code.");
+            }});
+        }} else {{
+            alert("Copy is not supported on this browser.");
+        }}
+    }}
+    </script>
 
     <p class="small">
         This code is displayed locally because this is a simulator.
@@ -1237,8 +1286,14 @@ body {
             </button>
         </div>
 
-        <div class="account">
-            {{ d["account"] }} {{ account["account_number"] }}
+        <div class="account" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+            <span>{{ d["account"] }} {{ account["account_number"] }}</span>
+            <button type="button"
+                    onclick="copyAccountNumber()"
+                    aria-label="Copy account number"
+                    style="border:0;background:transparent;cursor:pointer;font-size:18px;padding:4px;">
+                📋
+            </button>
         </div>
 
         <form method="GET" action="/dashboard" style="margin-top:14px;">
@@ -1319,6 +1374,20 @@ body {
 </div>
 
 <script>
+function copyAccountNumber() {
+    const accountNumber = {{ account["account_number"]|tojson }};
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(accountNumber).then(() => {
+            alert("Account number copied.");
+        }).catch(() => {
+            alert("Unable to copy account number.");
+        });
+    } else {
+        alert("Copy is not supported on this browser.");
+    }
+}
+
 const convertedBalance = {{ converted_balance|tojson }};
 const selectedCurrency = {{ currency|tojson }};
 
