@@ -63,6 +63,7 @@ def add_column(conn, table, column, definition):
 
 
 def init_db():
+    print("DATABASE BACKEND:", "POSTGRESQL" if DATABASE_URL else "SQLITE")
     conn = get_db()
 
     if DATABASE_URL:
