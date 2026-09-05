@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Tracking Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="page">
+    <div class="container">
+        <div class="card">
+            <h1>Admin Login</h1>
+            <p>Tracking Simulator</p>
+
+            {% if error %}
+                <div style="padding:12px;margin:15px 0;background:#fee2e2;color:#991b1b;border-radius:8px;">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <form method="POST">
+                <label>Username</label>
+                <input type="text" name="username" required>
+
+                <label>Password</label>
+                <input type="password" name="password" required>
+
+                <button type="submit">Login</button>
+            </form>
+
+            <p style="margin-top:20px;font-size:13px;">
+                DEMO / SIMULATION — Not an official FedEx service.
+            </p>
+        </div>
+    </div>
+</div>
+</body>
+</html>

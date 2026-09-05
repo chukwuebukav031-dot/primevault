@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Shipment Receipt</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=8) }}">
+</head>
+
+<body>
+
+<div class="receipt-page">
+    <div class="receipt">
+
+        <div class="receipt-demo">
+            FEDEX DELIVERY — SIMULATION
+        </div>
+
+        <div class="receipt-header">
+            <div class="receipt-brand">
+                <div class="receipt-mark">FD</div>
+                <div>
+                    <strong>FedEx Delivery</strong>
+                    <span>Shipment Receipt</span>
+                </div>
+            </div>
+
+            <div class="receipt-title">
+                <h1>SHIPMENT RECEIPT</h1>
+                <p>Receipt No: {{ shipment["receipt_number"] or "Not assigned" }}</p>
+                <p>{{ shipment["receipt_date"] or shipment["created_at"] }}</p>
+            </div>
+        </div>
+
+        <div class="receipt-top-grid">
+
+            <div class="receipt-panel">
+                <div class="receipt-panel-title">SHIPMENT DATES</div>
+
+                <div class="receipt-detail">
+                    <strong>Send date:</strong>
+                    <span>
+                        {{ shipment["send_datetime"] or shipment["created_at"] }}
+                    </span>
+                </div>
+
+                <div class="receipt-detail">
+                    <strong>Time:</strong>
+                    <span>
+                        {{ shipment["send_datetime"] or "Not provided" }}
+                    </span>
+                </div>
+
+                <div class="receipt-detail">
+                    <strong>Arriving date:</strong>
+                    <span>
+                        {{ shipment["delivery_datetime"] or shipment["estimated_delivery"] }}
+                    </span>
+                </div>
+
+                <div class="receipt-detail">
+                    <strong>Time:</strong>
+                    <span>
+                        {{ shipment["delivery_datetime"] or "Not provided" }}
+                    </span>
+                </div>
+            </div>
+
+
+            <div class="receipt-panel">
+                <div class="receipt-panel-title">PACKAGE</div>
+
+                <div class="receipt-detail">
+                    <strong>Package number:</strong>
+                    <span>{{ shipment["package_count"] or 1 }}</span>
+                </div>
+
+                <div class="receipt-detail">
+                    <strong>Package:</strong>
+                    <span>{{ shipment["package_description"] or "Gifts and money" }}</span>
+                </div>
+
+                <div class="receipt-detail">
+                    <strong>Weight:</strong>
+                    <span>{{ shipment["package_weight"] or "Not provided" }}</span>
+                </div>
+            </div>
+
+        </div>
+
+
+        <div class="receipt-parties-grid">
+
+            <div class="receipt-panel party-panel">
+                <div class="receipt-panel-title">RECEIVER DETAILS</div>
+
+                <div class="receipt-detail">
+                    <strong>Name:</strong>
+                    <span>{{ shipment["receiver_name"] }}</span>
+                </div>
+
+                <div class="receipt-detail">
+                    <strong>Country:</strong>
+                    <span>{{ shipment["receiver_country"] or "Not provided" }}</span>
+                </div>
+
+                <div class="receipt-detail">
+                    <strong>Address:</strong>
+                    <span>{{ shipment["receiver_address"] or "Not provided" }}</span>
+                </div>
+
+                <div class="receipt-detail">
+                    <strong>Phone:</strong>
+                    <span>{{ shipment["receiver_phone"] or "Not provided" }}</span>
+                </div>
+            </div>
+
+
+            <div class="receipt-panel party-panel">
+                <div class="receipt-panel-title">SENDER DETAILS</div>
+
+                <div class="receipt-detail">
+                    <strong>Name:</strong>
+                    <span>{{ shipment["sender_name"] }}</span>
+                </div>
+
+                <div class="receipt-detail">
+                    <strong>Country:</strong>
+                    <span>{{ shipment["sender_country"] or "Not provided" }}</span>
+                </div>
+
+                <div class="receipt-detail">
+                    <strong>Address:</strong>
+                    <span>{{ shipment["sender_address"] or "Not provided" }}</span>
+                </div>
+
+                <div class="receipt-detail">
+                    <strong>Phone:</strong>
+                    <span>{{ shipment["sender_phone"] or "Not provided" }}</span>
+                </div>
+            </div>
+
+        </div>
+
+
+        
+<div class="receipt-service">
+    <div class="receipt-service-title">SHIPMENT SUMMARY</div>
+
+    <div class="receipt-service-grid">
+        <div>
+            <strong>Service type</strong>
+            <span>Standard Delivery — Simulation</span>
+        </div>
+
+        <div>
+            <strong>Shipment status</strong>
+            <span>{{ shipment["status"] }}</span>
+        </div>
+
+        <div>
+            <strong>Current location</strong>
+            <span>{{ shipment["current_location"] }}</span>
+        </div>
+
+        <div>
+            <strong>Reference</strong>
+            <span>{{ shipment["tracking_id"] }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="receipt-information">
+
+            <div class="receipt-panel-title">SHIPMENT INFORMATION</div>
+
+            <div class="receipt-detail">
+                <strong>Tracking ID:</strong>
+                <span>{{ shipment["tracking_id"] }}</span>
+            </div>
+
+            <div class="receipt-detail">
+                <strong>From:</strong>
+                <span>{{ shipment["origin"] }} → {{ shipment["destination"] }}</span>
+            </div>
+
+            <div class="receipt-detail">
+                <strong>Destination:</strong>
+                <span>{{ shipment["destination"] }}</span>
+            </div>
+
+            <div class="receipt-detail">
+                <strong>Current location:</strong>
+                <span>{{ shipment["current_location"] }}</span>
+            </div>
+
+            <div class="receipt-detail">
+                <strong>Status:</strong>
+                <span>{{ shipment["status"] }}</span>
+            </div>
+
+            <div class="receipt-detail">
+                <strong>Estimated delivery:</strong>
+                <span>{{ shipment["estimated_delivery"] }}</span>
+            </div>
+
+        </div>
+
+
+        <div class="receipt-bottom">
+
+            <div class="receipt-note">
+                <strong>FedEx Delivery — SIMULATION</strong>
+                <p>Shipment information shown for demonstration purposes.</p>
+            </div>
+
+            <div class="approval-stamp">
+                ✓ APPROVED
+                <small>SIMULATION</small>
+            </div>
+
+        </div>
+
+
+        
+
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+<div class="receipt-page-buttons">
+{% if print_mode %}
+    <button type="button" onclick="saveReceiptImage()">Save IMG</button>
+{% else %}
+    <a href="{{ url_for('receipt_print_view', tracking_id=shipment['tracking_id']) }}">Print Receipt</a>
+{% endif %}
+
+    <a href="{{ url_for('shipment', tracking_id=shipment['tracking_id']) }}">Back to Tracking</a>
+
+{% if session.get("admin_logged_in") %}
+    <a href="{{ url_for('admin') }}">🏠 Back to Dashboard</a>
+{% endif %}
+</div>
+
+</body>
+</html>
+
+<style>
+/* MAKE RECEIPT FILL THE PRINT PAGE */
+.receipt-page {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.receipt {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* Larger normal view */
+.receipt-detail {
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+    padding: 7px 4px !important;
+}
+
+.receipt-panel {
+    padding: 12px !important;
+}
+
+.receipt-panel-title {
+    font-size: 13px !important;
+    padding-bottom: 6px !important;
+}
+
+.receipt-information {
+    padding: 12px !important;
+}
+
+.receipt-information .receipt-detail {
+    min-height: 28px !important;
+}
+
+@media print {
+    .receipt-page {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .receipt {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .receipt-detail {
+        font-size: 11px !important;
+        line-height: 1.3 !important;
+        padding: 6px 4px !important;
+    }
+
+    .receipt-panel {
+        padding: 10px !important;
+    }
+
+    .receipt-panel-title {
+        font-size: 12px !important;
+        padding-bottom: 5px !important;
+    }
+
+    .receipt-information {
+        padding: 10px !important;
+        margin: 7px 10px !important;
+    }
+
+    .receipt-information .receipt-detail {
+        min-height: 27px !important;
+    }
+
+    .receipt-header {
+        padding: 16px 18px !important;
+    }
+
+    .receipt-bottom {
+        min-height: 70px !important;
+    }
+}
+</style>
+
+<style>
+/* FULL PAGE + BOLD RECEIPT */
+.receipt,
+.receipt-page {
+    font-weight: 800 !important;
+}
+
+.receipt strong,
+.receipt span,
+.receipt p,
+.receipt small,
+.receipt-detail,
+.receipt-detail strong,
+.receipt-detail span {
+    font-weight: 800 !important;
+}
+
+@media print {
+    @page {
+        size: Letter portrait;
+        margin: 4mm;
+    }
+
+    html,
+    body {
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .receipt-page {
+        width: 100% !important;
+        max-width: none !important;
+        min-height: calc(11in - 8mm) !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .receipt {
+        width: 100% !important;
+        min-height: calc(11in - 8mm) !important;
+        margin: 0 !important;
+        padding: 0 0 20px !important;
+        box-sizing: border-box !important;
+        font-weight: 800 !important;
+    }
+
+    .receipt-header {
+        padding: 20px 22px !important;
+    }
+
+    .receipt-top-grid,
+    .receipt-parties-grid {
+        padding: 10px 12px !important;
+        gap: 10px !important;
+    }
+
+    .receipt-panel {
+        padding: 12px !important;
+    }
+
+    .receipt-panel-title {
+        font-size: 13px !important;
+        font-weight: 900 !important;
+        padding-bottom: 7px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .receipt-detail {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        line-height: 1.35 !important;
+        padding: 7px 4px !important;
+    }
+
+    .receipt-detail strong,
+    .receipt-detail span {
+        font-weight: 800 !important;
+    }
+
+    .receipt-information {
+        margin: 8px 12px !important;
+        padding: 12px !important;
+    }
+
+    .receipt-information .receipt-detail {
+        min-height: 31px !important;
+    }
+
+    .receipt-bottom {
+        margin: 8px 12px !important;
+        min-height: 85px !important;
+        font-weight: 800 !important;
+    }
+
+    .receipt-note strong,
+    .receipt-note p {
+        font-weight: 800 !important;
+    }
+
+    .approval-stamp {
+        width: 72px !important;
+        height: 72px !important;
+        right: 12px !important;
+        bottom: 8px !important;
+        font-weight: 900 !important;
+    }
+
+    .receipt-actions {
+        display: none !important;
+    }
+}
+</style>
+
+<style>
+@media print {
+    .receipt-header {
+        padding: 24px 26px !important;
+    }
+
+    .receipt-header h1 {
+        font-size: 22px !important;
+        font-weight: 900 !important;
+    }
+
+    .receipt-brand strong {
+        font-size: 18px !important;
+        font-weight: 900 !important;
+    }
+
+    .receipt-brand span {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+    }
+
+    .receipt-top-grid,
+    .receipt-parties-grid {
+        padding: 12px 14px !important;
+        gap: 12px !important;
+    }
+
+    .receipt-panel {
+        padding: 14px !important;
+    }
+
+    .receipt-panel-title {
+        font-size: 14px !important;
+        font-weight: 900 !important;
+        padding-bottom: 8px !important;
+    }
+
+    .receipt-detail {
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+        padding: 8px 5px !important;
+        font-weight: 900 !important;
+    }
+
+    .receipt-information {
+        margin: 10px 14px !important;
+        padding: 14px !important;
+    }
+
+    .receipt-information .receipt-detail {
+        min-height: 34px !important;
+    }
+
+    .receipt-bottom {
+        margin: 10px 14px !important;
+        min-height: 90px !important;
+    }
+
+    .receipt-note {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+    }
+
+    .approval-stamp {
+        width: 78px !important;
+        height: 78px !important;
+        font-size: 9px !important;
+        font-weight: 900 !important;
+    }
+}
+</style>
+
+<!-- SHIPMENT SUMMARY STYLES -->
+
+<style>
+.receipt-service {
+    margin: 8px 18px;
+    padding: 12px;
+    border: 1px solid #d8d2df;
+    border-radius: 8px;
+    background: #faf9fc;
+}
+
+.receipt-service-title {
+    font-size: 13px;
+    font-weight: 900;
+    color: #3b1f5c;
+    border-bottom: 2px solid #3b1f5c;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+}
+
+.receipt-service-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 18px;
+}
+
+.receipt-service-grid div {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 5px 0;
+}
+
+.receipt-service-grid strong,
+.receipt-service-grid span {
+    font-weight: 800;
+    font-size: 11px;
+}
+
+@media print {
+    .receipt-service {
+        margin: 8px 14px !important;
+        padding: 10px !important;
+    }
+
+    .receipt-service-title {
+        font-size: 13px !important;
+    }
+
+    .receipt-service-grid {
+        gap: 7px 14px !important;
+    }
+
+    .receipt-service-grid strong,
+    .receipt-service-grid span {
+        font-size: 11px !important;
+        font-weight: 900 !important;
+    }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+async function saveReceiptImage() {
+    const receipt = document.querySelector(".receipt");
+
+    if (!receipt) {
+        alert("Receipt not found.");
+        return;
+    }
+
+    const button = document.querySelector(
+        'button[onclick="saveReceiptImage()"]'
+    );
+
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Creating Image...";
+    }
+
+    try {
+        const canvas = await html2canvas(receipt, {
+            scale: 2,
+            backgroundColor: "#ffffff",
+            useCORS: true
+        });
+
+        canvas.toBlob(function(blob) {
+            if (!blob) {
+                throw new Error("Could not create image.");
+            }
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+
+            link.href = url;
+            link.download = "shipment-receipt-{{ shipment['tracking_id'] }}.png";
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }, "image/png");
+
+    } catch (error) {
+        console.error(error);
+        alert("Unable to create the receipt image.");
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = "Save as Image";
+        }
+    }
+}
+</script>
+
+<style>
+.save-image-area {
+    text-align: center;
+    margin: 18px auto;
+}
+
+.save-image-area button {
+    background: #3b1f5c;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 22px;
+    font-size: 15px;
+    font-weight: 900;
+}
+
+@media print {
+    .save-image-area {
+        display: none !important;
+    }
+}
+</style>
+
+<style>
+@media print {
+    @page {
+        size: Letter portrait;
+        margin: 4mm;
+    }
+
+    .receipt-page {
+        width: 100% !important;
+        max-width: none !important;
+        height: 260mm !important;
+        max-height: 260mm !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .receipt {
+        width: 100% !important;
+        height: 260mm !important;
+        max-height: 260mm !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+        padding-bottom: 5px !important;
+        page-break-after: avoid !important;
+        break-after: avoid-page !important;
+    }
+
+    .receipt-header {
+        padding: 16px 20px !important;
+    }
+
+    .receipt-top-grid,
+    .receipt-parties-grid {
+        padding: 8px 12px !important;
+        gap: 8px !important;
+    }
+
+    .receipt-panel {
+        padding: 9px !important;
+    }
+
+    .receipt-detail {
+        font-size: 11px !important;
+        line-height: 1.25 !important;
+        padding: 5px 4px !important;
+    }
+
+    .receipt-information {
+        margin: 7px 12px !important;
+        padding: 9px !important;
+    }
+
+    .receipt-information .receipt-detail {
+        min-height: 27px !important;
+    }
+
+    .receipt-service {
+        margin: 7px 12px !important;
+        padding: 9px !important;
+    }
+
+    .receipt-service-grid {
+        gap: 5px 12px !important;
+    }
+
+    .receipt-service-grid strong,
+    .receipt-service-grid span {
+        font-size: 10px !important;
+    }
+
+    .receipt-bottom {
+        margin: 6px 12px !important;
+        min-height: 65px !important;
+        height: 65px !important;
+    }
+
+    .approval-stamp {
+        width: 68px !important;
+        height: 68px !important;
+        right: 8px !important;
+        bottom: 3px !important;
+    }
+
+    .receipt-actions,
+    .save-image-area {
+        display: none !important;
+    }
+}
+</style>
+
+
+<style>
+.save-image-area {
+    display: flex !important;
+    justify-content: center !important;
+    margin: 18px auto 30px !important;
+}
+
+.save-image-area button {
+    background: #3b1f5c !important;
+    color: #ffffff !important;
+    border: 2px solid #3b1f5c !important;
+    border-radius: 4px !important;
+    padding: 14px 42px !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+}
+
+.save-image-area button:active {
+    transform: scale(0.98);
+}
+
+@media print {
+    .save-image-area {
+        display: none !important;
+    }
+}
+</style>
+
+
+<style>
+.receipt-page-buttons {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin: 20px auto 35px !important;
+}
+
+.receipt-page-buttons button,
+.receipt-page-buttons a {
+    width: 90% !important;
+    max-width: 500px !important;
+    box-sizing: border-box !important;
+    padding: 14px 20px !important;
+    border-radius: 4px !important;
+    text-align: center !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    text-decoration: none !important;
+}
+
+.receipt-page-buttons button {
+    background: #3b1f5c !important;
+    color: white !important;
+    border: 2px solid #3b1f5c !important;
+}
+
+.receipt-page-buttons a {
+    background: white !important;
+    color: #3b1f5c !important;
+    border: 2px solid #3b1f5c !important;
+}
+
+@media print {
+    .receipt-page-buttons {
+        display: none !important;
+    }
+}
+</style>
+
+
+<style>
+.receipt-page-buttons {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin: 20px auto 35px !important;
+}
+
+.receipt-page-buttons button,
+.receipt-page-buttons a {
+    width: 90% !important;
+    max-width: 500px !important;
+    box-sizing: border-box !important;
+    padding: 14px 20px !important;
+    border-radius: 4px !important;
+    text-align: center !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    text-decoration: none !important;
+}
+
+.receipt-page-buttons button {
+    background: #3b1f5c !important;
+    color: white !important;
+    border: 2px solid #3b1f5c !important;
+}
+
+.receipt-page-buttons a {
+    background: white !important;
+    color: #3b1f5c !important;
+    border: 2px solid #3b1f5c !important;
+}
+</style>
+
+<style>
+@media print {
+    @page {
+        size: Letter portrait;
+        margin: 4mm;
+    }
+
+    html,
+    body {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .receipt-page {
+        width: 100% !important;
+        height: 10.2in !important;
+        max-height: 10.2in !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    .receipt {
+        width: 108% !important;
+        max-width: none !important;
+        height: 10.2in !important;
+        max-height: 10.2in !important;
+        margin-left: -4% !important;
+        margin-top: 0 !important;
+        padding-bottom: 0 !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        page-break-after: avoid !important;
+        break-after: avoid-page !important;
+    }
+
+    .receipt-header {
+        padding: 14px 18px !important;
+    }
+
+    .receipt-top-grid,
+    .receipt-parties-grid {
+        padding: 7px 10px !important;
+        gap: 7px !important;
+    }
+
+    .receipt-panel {
+        padding: 8px !important;
+    }
+
+    .receipt-panel-title {
+        font-size: 11px !important;
+        padding-bottom: 4px !important;
+    }
+
+    .receipt-detail {
+        font-size: 10px !important;
+        line-height: 1.2 !important;
+        padding: 4px !important;
+    }
+
+    .receipt-service {
+        margin: 6px 10px !important;
+        padding: 8px !important;
+    }
+
+    .receipt-service-title {
+        font-size: 11px !important;
+        padding-bottom: 4px !important;
+    }
+
+    .receipt-service-grid strong,
+    .receipt-service-grid span {
+        font-size: 9px !important;
+    }
+
+    .receipt-information {
+        margin: 6px 10px !important;
+        padding: 8px !important;
+    }
+
+    .receipt-information .receipt-detail {
+        min-height: 23px !important;
+    }
+
+    .receipt-bottom {
+        margin: 5px 10px !important;
+        min-height: 58px !important;
+        height: 58px !important;
+    }
+
+    .approval-stamp {
+        width: 62px !important;
+        height: 62px !important;
+        right: 7px !important;
+        bottom: 2px !important;
+    }
+
+    .receipt-page-buttons {
+        display: none !important;
+    }
+}
+</style>
+
+<style>
+@media print {
+    .approval-stamp {
+        width: 45px !important;
+        height: 45px !important;
+        right: 6px !important;
+        bottom: 2px !important;
+        font-size: 6px !important;
+        line-height: 1.1 !important;
+    }
+
+    .approval-stamp small {
+        font-size: 5px !important;
+    }
+
+    .receipt-bottom {
+        min-height: 48px !important;
+        height: 48px !important;
+    }
+}
+</style>
+
+<style>
+@media print {
+    .receipt-page {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 10.2in !important;
+        overflow: hidden !important;
+    }
+
+    .receipt {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        height: 10.2in !important;
+        max-height: 10.2in !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    .approval-stamp {
+        width: 55px !important;
+        height: 55px !important;
+        right: 8px !important;
+        bottom: 3px !important;
+        font-size: 6px !important;
+    }
+
+    .approval-stamp small {
+        font-size: 5px !important;
+    }
+}
+</style>
+
+<style>
+@media print {
+    html, body {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .receipt-page {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+    }
+
+    .receipt {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        max-height: 10.2in !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+        page-break-after: avoid !important;
+        break-after: avoid-page !important;
+    }
+
+    .receipt-top-grid,
+    .receipt-parties-grid {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .receipt-panel,
+    .receipt-service,
+    .receipt-information,
+    .receipt-bottom {
+        box-sizing: border-box !important;
+        max-width: 100% !important;
+    }
+
+    .approval-stamp {
+        width: 45px !important;
+        height: 45px !important;
+        right: 5px !important;
+        bottom: 2px !important;
+        font-size: 5px !important;
+    }
+
+    .approval-stamp small {
+        font-size: 4px !important;
+    }
+
+    .receipt-page-buttons {
+        display: none !important;
+    }
+}
+</style>

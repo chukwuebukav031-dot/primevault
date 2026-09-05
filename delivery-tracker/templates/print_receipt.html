@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shipment Receipt</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 18px;
+    background: #eeeeF2;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #222;
+}
+
+.receipt {
+    width: 100%;
+    max-width: 850px;
+    margin: 0 auto;
+    background: white;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 12px rgba(0,0,0,.12);
+}
+
+.demo {
+    background: #3b1f5c;
+    color: white;
+    text-align: center;
+    padding: 7px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .5px;
+}
+
+.header {
+    background: #3b1f5c;
+    color: white;
+    padding: 18px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mark {
+    width: 42px;
+    height: 42px;
+    border: 2px solid white;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+}
+
+.brand strong {
+    display: block;
+    font-size: 18px;
+}
+
+.brand span {
+    display: block;
+    font-size: 10px;
+    margin-top: 3px;
+}
+
+.title {
+    text-align: right;
+}
+
+.title h1 {
+    margin: 0;
+    font-size: 21px;
+    font-weight: 900;
+}
+
+.title p {
+    margin: 4px 0 0;
+    font-size: 8px;
+    font-weight: 700;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px;
+}
+
+.panel {
+    border: 1px solid #d6d1dc;
+    border-radius: 7px;
+    padding: 9px;
+}
+
+.panel-title {
+    color: #3b1f5c;
+    font-size: 11px;
+    font-weight: 900;
+    border-bottom: 2px solid #3b1f5c;
+    padding-bottom: 4px;
+    margin-bottom: 3px;
+}
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 1px solid #e5e5e5;
+    padding: 5px 2px;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.row:last-child {
+    border-bottom: none;
+}
+
+.row span:last-child {
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.summary {
+    margin: 0 10px 8px;
+    border: 1px solid #d6d1dc;
+    border-radius: 7px;
+    padding: 9px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px 20px;
+}
+
+.info {
+    margin: 0 10px 8px;
+    border: 1px solid #d6d1dc;
+    border-radius: 7px;
+    padding: 9px;
+}
+
+.info .row {
+    min-height: 25px;
+}
+
+.bottom {
+    position: relative;
+    margin: 0 10px 10px;
+    border-top: 2px solid #3b1f5c;
+    min-height: 65px;
+    padding: 8px 85px 8px 0;
+}
+
+.note strong {
+    display: block;
+    font-size: 9px;
+    font-weight: 900;
+}
+
+.note p {
+    margin: 4px 0 0;
+    font-size: 8px;
+    font-weight: 700;
+}
+
+.stamp {
+    position: absolute;
+    right: 5px;
+    top: 2px;
+    width: 58px;
+    height: 58px;
+    border: 3px solid #18a558;
+    border-radius: 50%;
+    color: #18a558;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 7px;
+    font-weight: 900;
+    transform: rotate(-8deg);
+}
+
+.stamp small {
+    font-size: 5px;
+    margin-top: 2px;
+}
+
+.buttons {
+    max-width: 850px;
+    margin: 16px auto 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.buttons button,
+.buttons a {
+    width: 100%;
+    padding: 13px;
+    border-radius: 4px;
+    font-size: 15px;
+    font-weight: 900;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.buttons button {
+    background: #3b1f5c;
+    color: white;
+    border: 2px solid #3b1f5c;
+}
+
+.buttons a {
+    background: white;
+    color: #3b1f5c;
+    border: 2px solid #3b1f5c;
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 8px;
+    }
+
+    .header {
+        padding: 14px;
+    }
+
+    .brand strong {
+        font-size: 15px;
+    }
+
+    .title h1 {
+        font-size: 17px;
+    }
+
+    .row {
+        font-size: 8px;
+    }
+}
+
+@media print {
+    @page {
+        size: Letter portrait;
+        margin: 4mm;
+    }
+
+    body {
+        padding: 0;
+        background: white;
+    }
+
+    .receipt {
+        max-width: none;
+        width: 100%;
+        box-shadow: none;
+        border: none;
+    }
+
+    .buttons {
+        display: none;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="receipt" id="receipt">
+
+    <div class="demo">FEDEX DELIVERY — SIMULATION</div>
+
+    <div class="header">
+        <div class="brand">
+            <div class="mark">FD</div>
+            <div>
+                <strong>FedEx Delivery</strong>
+                <span>Shipment Receipt</span>
+            </div>
+        </div>
+
+        <div class="title">
+            <h1>SHIPMENT RECEIPT</h1>
+            <p>Receipt No: {{ shipment["receipt_number"] or "Not assigned" }}</p>
+            <p>{{ shipment["receipt_date"] or shipment["created_at"] }}</p>
+        </div>
+    </div>
+
+    <div class="grid">
+
+        <div class="panel">
+            <div class="panel-title">SHIPMENT DATES</div>
+
+            <div class="row">
+                <strong>Send date:</strong>
+                <span>{{ (shipment["send_datetime"] or shipment["created_at"])[:10] }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Time:</strong>
+                <span>{{ (shipment["send_datetime"] or shipment["created_at"])[11:16] }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Arriving date:</strong>
+                <span>{{ shipment["delivery_datetime"][:10] if shipment["delivery_datetime"] else shipment["estimated_delivery"] }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Time:</strong>
+                <span>{{ shipment["delivery_datetime"][11:16] if shipment["delivery_datetime"] else "Not provided" }}</span>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">PACKAGE</div>
+
+            <div class="row">
+                <strong>Package number:</strong>
+                <span>{{ shipment["package_count"] or 1 }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Package:</strong>
+                <span>{{ shipment["package_description"] or "Gifts and money" }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Weight:</strong>
+                <span>{{ shipment["package_weight"] or "Not provided" }}</span>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">RECEIVER DETAILS</div>
+
+            <div class="row">
+                <strong>Name:</strong>
+                <span>{{ shipment["receiver_name"] }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Country:</strong>
+                <span>{{ shipment["receiver_country"] or "Not provided" }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Address:</strong>
+                <span>{{ shipment["receiver_address"] or "Not provided" }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Phone:</strong>
+                <span>{{ shipment["receiver_phone"] or "Not provided" }}</span>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">SENDER DETAILS</div>
+
+            <div class="row">
+                <strong>Name:</strong>
+                <span>{{ shipment["sender_name"] }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Country:</strong>
+                <span>{{ shipment["sender_country"] or "Not provided" }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Address:</strong>
+                <span>{{ shipment["sender_address"] or "Not provided" }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Phone:</strong>
+                <span>{{ shipment["sender_phone"] or "Not provided" }}</span>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="summary">
+        <div class="panel-title">SHIPMENT SUMMARY</div>
+
+        <div class="summary-grid">
+            <div class="row">
+                <strong>Service type</strong>
+                <span>Standard Delivery — Simulation</span>
+            </div>
+
+            <div class="row">
+                <strong>Shipment status</strong>
+                <span>{{ shipment["status"] }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Current location</strong>
+                <span>{{ shipment["current_location"] }}</span>
+            </div>
+
+            <div class="row">
+                <strong>Reference</strong>
+                <span>{{ shipment["tracking_id"] }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="info">
+        <div class="panel-title">SHIPMENT INFORMATION</div>
+
+        <div class="row">
+            <strong>Tracking ID:</strong>
+            <span>{{ shipment["tracking_id"] }}</span>
+        </div>
+
+        <div class="row">
+            <strong>From:</strong>
+            <span>{{ shipment["origin"] }} → {{ shipment["destination"] }}</span>
+        </div>
+
+        <div class="row">
+            <strong>Destination:</strong>
+            <span>{{ shipment["destination"] }}</span>
+        </div>
+
+        <div class="row">
+            <strong>Current location:</strong>
+            <span>{{ shipment["current_location"] }}</span>
+        </div>
+
+        <div class="row">
+            <strong>Status:</strong>
+            <span>{{ shipment["status"] }}</span>
+        </div>
+
+        <div class="row">
+            <strong>Estimated delivery:</strong>
+            <span>{{ shipment["estimated_delivery"] }}</span>
+        </div>
+    </div>
+
+    <div class="bottom">
+        <div class="note">
+            <strong>FedEx Delivery — SIMULATION</strong>
+            <p>Shipment information shown for demonstration purposes.</p>
+        </div>
+
+        <div class="stamp">
+            ✓ APPROVED
+            <small>SIMULATION</small>
+        </div>
+    </div>
+
+</div>
+
+<div class="buttons">
+    <button type="button" onclick="saveReceiptImage()">Save IMG</button>
+
+    <a href="{{ url_for('shipment', tracking_id=shipment['tracking_id']) }}">
+        Back to Tracking
+    </a>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+async function saveReceiptImage() {
+    const receipt = document.getElementById("receipt");
+    const button = document.querySelector(".buttons button");
+
+    if (!receipt || typeof html2canvas === "undefined") {
+        alert("Receipt image service is not available.");
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Saving...";
+
+    let holder;
+
+    try {
+        holder = document.createElement("div");
+        holder.style.cssText =
+            "position:fixed;left:-10000px;top:0;width:360px;" +
+            "background:white;padding:0;margin:0;";
+
+        const clone = receipt.cloneNode(true);
+
+        clone.style.cssText =
+            "width:360px!important;" +
+            "max-width:360px!important;" +
+            "min-width:360px!important;" +
+            "margin:0!important;" +
+            "transform:none!important;" +
+            "box-shadow:none!important;";
+
+        holder.appendChild(clone);
+        document.body.appendChild(holder);
+
+        await new Promise(r => requestAnimationFrame(() =>
+            requestAnimationFrame(r)
+        ));
+
+        const canvas = await html2canvas(clone, {
+            scale: 3,
+            width: 360,
+            height: clone.scrollHeight,
+            windowWidth: 360,
+            windowHeight: clone.scrollHeight,
+            backgroundColor: "#ffffff",
+            useCORS: true,
+            scrollX: 0,
+            scrollY: 0
+        });
+
+        canvas.toBlob(blob => {
+            if (!blob) {
+                alert("Unable to create receipt image.");
+                return;
+            }
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+
+            link.href = url;
+            link.download =
+                "shipment-receipt-{{ shipment['tracking_id'] }}.png";
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+            button.disabled = false;
+            button.textContent = "Save IMG";
+        }, "image/png");
+
+    } catch (e) {
+        console.error(e);
+        alert("Unable to save receipt image.");
+        button.disabled = false;
+        button.textContent = "Save IMG";
+    } finally {
+        if (holder) holder.remove();
+    }
+}</script>
+
+</body>
+</html>
+
+<style>
+/* COMPACT PRINT RECEIPT */
+.receipt {
+    max-width: 720px !important;
+}
+
+.header {
+    padding: 12px 16px !important;
+}
+
+.demo {
+    padding: 5px !important;
+    font-size: 9px !important;
+}
+
+.mark {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 12px !important;
+}
+
+.brand strong {
+    font-size: 15px !important;
+}
+
+.title h1 {
+    font-size: 18px !important;
+}
+
+.grid {
+    gap: 6px !important;
+    padding: 7px !important;
+}
+
+.panel,
+.summary,
+.info {
+    padding: 7px !important;
+}
+
+.panel-title {
+    font-size: 10px !important;
+}
+
+.row {
+    font-size: 8px !important;
+    padding: 4px 2px !important;
+}
+
+.summary {
+    margin: 0 7px 6px !important;
+}
+
+.info {
+    margin: 0 7px 6px !important;
+}
+
+.bottom {
+    margin: 0 7px 7px !important;
+    min-height: 50px !important;
+}
+
+.stamp {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 6px !important;
+}
+
+.stamp small {
+    font-size: 4px !important;
+}
+</style>
+
+<style>
+/* FINAL COMPACT SIZE */
+body {
+    padding: 10px !important;
+}
+
+.receipt {
+    width: 100% !important;
+    max-width: 620px !important;
+    margin: 0 auto !important;
+    transform: none !important;
+    transform-origin: top center;
+    margin-bottom: 0 !important;
+}
+
+.buttons {
+    max-width: 650px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+@media print {
+    .receipt {
+        width: 100% !important;
+        max-width: 100% !important;
+        transform: none !important;
+        margin: 0 !important;
+    }
+}
+</style>
+
+<style>
+/* MEDIUM COMPACT RECEIPT */
+.receipt {
+    width: 100% !important;
+    max-width: 450px !important;
+    margin: 0 auto !important;
+}
+
+.demo {
+    padding: 4px !important;
+    font-size: 8px !important;
+}
+
+.header {
+    padding: 10px 12px !important;
+}
+
+.mark {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 10px !important;
+}
+
+.brand strong {
+    font-size: 13px !important;
+}
+
+.brand span {
+    font-size: 8px !important;
+}
+
+.title h1 {
+    font-size: 15px !important;
+}
+
+.title p {
+    font-size: 7px !important;
+    margin-top: 2px !important;
+}
+
+.grid {
+    gap: 5px !important;
+    padding: 6px !important;
+}
+
+.panel {
+    padding: 6px !important;
+    border-radius: 5px !important;
+}
+
+.panel-title {
+    font-size: 8px !important;
+    padding-bottom: 3px !important;
+    margin-bottom: 2px !important;
+}
+
+.row {
+    font-size: 7px !important;
+    padding: 3px 1px !important;
+    gap: 5px !important;
+}
+
+.summary,
+.info {
+    margin-left: 6px !important;
+    margin-right: 6px !important;
+    padding: 6px !important;
+}
+
+.summary {
+    margin-bottom: 5px !important;
+}
+
+.info {
+    margin-bottom: 5px !important;
+}
+
+.info .row {
+    min-height: 20px !important;
+}
+
+.bottom {
+    margin: 0 6px 6px !important;
+    min-height: 45px !important;
+    padding: 6px 65px 6px 0 !important;
+}
+
+.note strong {
+    font-size: 7px !important;
+}
+
+.note p {
+    font-size: 6px !important;
+    margin-top: 2px !important;
+}
+
+.stamp {
+    width: 42px !important;
+    height: 42px !important;
+    right: 3px !important;
+    top: 2px !important;
+    border-width: 2px !important;
+    font-size: 5px !important;
+}
+
+.stamp small {
+    font-size: 3px !important;
+}
+
+.buttons {
+    max-width: 450px !important;
+}
+</style>
+
+<style>
+/* EXTRA COMPACT RECEIPT */
+.receipt {
+    max-width: 380px !important;
+}
+
+.header {
+    padding: 8px 10px !important;
+}
+
+.demo {
+    padding: 3px !important;
+    font-size: 7px !important;
+}
+
+.mark {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 9px !important;
+}
+
+.brand {
+    gap: 6px !important;
+}
+
+.brand strong {
+    font-size: 11px !important;
+}
+
+.brand span {
+    font-size: 7px !important;
+}
+
+.title h1 {
+    font-size: 12px !important;
+}
+
+.title p {
+    font-size: 6px !important;
+}
+
+.grid {
+    gap: 4px !important;
+    padding: 5px !important;
+}
+
+.panel,
+.summary,
+.info {
+    padding: 5px !important;
+}
+
+.panel-title {
+    font-size: 7px !important;
+}
+
+.row {
+    font-size: 6px !important;
+    padding: 2px 1px !important;
+}
+
+.info .row {
+    min-height: 17px !important;
+}
+
+.summary,
+.info {
+    margin-left: 5px !important;
+    margin-right: 5px !important;
+    margin-bottom: 4px !important;
+}
+
+.bottom {
+    margin: 0 5px 5px !important;
+    min-height: 38px !important;
+    padding: 5px 55px 5px 0 !important;
+}
+
+.note strong {
+    font-size: 6px !important;
+}
+
+.note p {
+    font-size: 5px !important;
+}
+
+.stamp {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 4px !important;
+}
+
+.stamp small {
+    font-size: 2.5px !important;
+}
+
+.buttons {
+    max-width: 380px !important;
+}
+</style>
+
+<style>
+/* CLEAN + READABLE PORTRAIT RECEIPT */
+.receipt {
+    width: 360px !important;
+    max-width: 360px !important;
+    margin: 0 auto !important;
+}
+
+.header {
+    padding: 11px 12px !important;
+}
+
+.brand strong {
+    font-size: 13px !important;
+}
+
+.brand span {
+    font-size: 8px !important;
+}
+
+.title h1 {
+    font-size: 14px !important;
+}
+
+.title p {
+    font-size: 7px !important;
+}
+
+.grid {
+    gap: 6px !important;
+    padding: 7px !important;
+}
+
+.panel {
+    padding: 7px !important;
+}
+
+.panel-title {
+    font-size: 8px !important;
+    padding-bottom: 4px !important;
+}
+
+.row {
+    font-size: 7.5px !important;
+    padding: 4px 2px !important;
+    line-height: 1.3 !important;
+}
+
+.summary,
+.info {
+    margin-left: 7px !important;
+    margin-right: 7px !important;
+    padding: 7px !important;
+}
+
+.info .row {
+    min-height: 21px !important;
+}
+
+.bottom {
+    margin: 0 7px 7px !important;
+    min-height: 48px !important;
+    padding: 7px 65px 7px 0 !important;
+}
+
+.note strong {
+    font-size: 7.5px !important;
+}
+
+.note p {
+    font-size: 6.5px !important;
+    line-height: 1.3 !important;
+}
+
+.stamp {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 5px !important;
+}
+
+.stamp small {
+    font-size: 3px !important;
+}
+</style>

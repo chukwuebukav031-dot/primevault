@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Track Your Shipment - Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<div class="tracking-home">
+
+    <div class="tracking-hero">
+        <div class="demo">
+            FEDEX DELIVERY — SIMULATION
+        </div>
+
+        <div class="delivery-art">🚚</div>
+
+        <h1>Track Your Shipment</h1>
+
+        <p>
+            Enter your tracking ID to view your shipment status,
+            delivery information and current location.
+        </p>
+
+        <form method="POST" class="tracking-search">
+            <input
+                type="text"
+                name="tracking_id"
+                placeholder="Enter Tracking ID"
+                required
+                autocomplete="off"
+            >
+
+            <button type="submit">
+                Track Shipment
+            </button>
+        </form>
+    </div>
+
+
+    <div class="tracking-feature-grid">
+
+        <div class="tracking-feature">
+            <div class="feature-icon">📦</div>
+            <h2>Shipment Details</h2>
+            <p>View complete package information and delivery status.</p>
+        </div>
+
+        <div class="tracking-feature">
+            <div class="feature-icon">🚛</div>
+            <h2>Delivery Journey</h2>
+            <p>Follow the shipment's progress through each tracking event.</p>
+        </div>
+
+        <div class="tracking-feature">
+            <div class="feature-icon">📍</div>
+            <h2>Current Location</h2>
+            <p>See the latest reported location of the shipment.</p>
+        </div>
+
+        <div class="tracking-feature">
+            <div class="feature-icon">🧾</div>
+            <h2>Shipment Record</h2>
+            <p>View sender, receiver and package information in one place.</p>
+        </div>
+
+    </div>
+
+
+    <div class="tracking-info-banner">
+        <div class="banner-icon">🌍</div>
+        <div>
+            <h2>Track From Anywhere</h2>
+            <p>
+                Enter your tracking ID above to access the complete
+                shipment tracking page.
+            </p>
+        </div>
+    </div>
+
+
+    <div class="tracking-demo-route">
+
+        <div class="route-card">
+            <div class="route-icon">📦</div>
+            <div>
+                <strong>Shipment Created</strong>
+                <span>Your shipment enters the tracking system.</span>
+            </div>
+        </div>
+
+        <div class="route-line"></div>
+
+        <div class="route-card">
+            <div class="route-icon">🚚</div>
+            <div>
+                <strong>In Transit</strong>
+                <span>Your shipment continues through its delivery journey.</span>
+            </div>
+        </div>
+
+        <div class="route-line"></div>
+
+        <div class="route-card">
+            <div class="route-icon">📍</div>
+            <div>
+                <strong>Current Location</strong>
+                <span>The latest reported shipment location is displayed.</span>
+            </div>
+        </div>
+
+        <div class="route-line"></div>
+
+        <div class="route-card">
+            <div class="route-icon">🏠</div>
+            <div>
+                <strong>Delivery</strong>
+                <span>Shipment reaches its final destination.</span>
+            </div>
+        </div>
+
+    </div>
+
+
+    <div class="tracking-footer">
+        <strong>FedEx Delivery</strong>
+        <br>
+        DEMO / SIMULATION ONLY — Not an official FedEx service.
+    </div>
+
+</div>
+
+</body>
+</html>

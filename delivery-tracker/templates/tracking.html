@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Shipment Tracking - Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<div class="tracking-results">
+
+    <div class="tracking-top">
+        <div class="demo">
+            FEDEX DELIVERY — SIMULATION
+        </div>
+
+        <div class="mini-truck">🚚</div>
+
+        <h1>Shipment Tracking</h1>
+
+        <p>Your shipment information and latest tracking activity</p>
+    </div>
+
+
+    <div class="results-container">
+
+        <div class="tracking-approval">
+    <div class="approval-circle">
+        ✓
+    </div>
+    <div>
+        <strong>APPROVED</strong>
+        <span>SIMULATION</span>
+    </div>
+</div>
+
+
+<div class="status-card">
+
+            <div>
+                <span class="small-label">CURRENT STATUS</span>
+                <h2>{{ shipment["status"] }}</h2>
+                <p>📍 {{ shipment["current_location"] }}</p>
+            </div>
+
+            <div class="status-icon">
+                📦
+            </div>
+
+        </div>
+
+
+        <div class="location-card">
+
+            <div class="section-title">
+                <span>📍</span>
+                <h2>Current Package Location</h2>
+            </div>
+
+            <div class="real-map-card">
+
+                {% if current_location_data %}
+
+                <div class="map-status">
+                    <span>●</span>
+                    SIMULATED CURRENT LOCATION
+                </div>
+
+                <iframe
+                    class="real-map"
+                    title="Simulated shipment location map"
+                    src="https://www.openstreetmap.org/export/embed.html?bbox={% if map_bbox %}{{ map_bbox[0] }},{{ map_bbox[1] }},{{ map_bbox[2] }},{{ map_bbox[3] }}{% else %}{{ current_location_data["longitude"] - 0.08 }},{{ current_location_data["latitude"] - 0.05 }},{{ current_location_data["longitude"] + 0.08 }},{{ current_location_data["latitude"] + 0.05 }}{% endif %}&layer=mapnik&marker={{ current_location_data["latitude"] }},{{ current_location_data["longitude"] }}">
+                </iframe>
+
+                <div class="map-location">
+                    📍 {{ shipment["current_location"] }}
+                </div>
+
+                {% else %}
+
+                <div class="map-unavailable">
+                    <strong>Location not available</strong>
+                    <p>We could not find geographic coordinates for this location.</p>
+                </div>
+
+                {% endif %}
+
+            </div>
+
+            <div class="location-details">
+                <strong>Latest reported location</strong>
+                <p>{{ shipment["current_location"] }}</p>
+            </div>
+
+        </div>
+
+
+        <div class="overview-grid">
+
+            <div class="detail-card">
+                <span class="card-icon">📤</span>
+                <h3>Date Sent</h3>
+                <strong>{{ shipment["created_at"] }}</strong>
+            </div>
+
+            <div class="detail-card">
+                <span class="card-icon">🧾</span>
+                <h3>Tracking ID</h3>
+                <strong>{{ shipment["tracking_id"] }}</strong>
+            </div>
+
+            <div class="detail-card">
+                <span class="card-icon">📅</span>
+                <h3>Estimated Delivery</h3>
+                <strong>{{ shipment["estimated_delivery"] }}</strong>
+            </div>
+
+            <div class="detail-card">
+                <span class="card-icon">🔖</span>
+                <h3>Receipt Number</h3>
+                <strong>{{ shipment["receipt_number"] or "Not assigned" }}</strong>
+            </div>
+
+            <div class="detail-card">
+                <span class="card-icon">📦</span>
+                <h3>Packages</h3>
+                <strong>{{ shipment["package_count"] or 1 }}</strong>
+            </div>
+
+        </div>
+
+
+        <div class="information-card">
+
+            <div class="section-title">
+                <span>👤</span>
+                <h2>Sender Information</h2>
+            </div>
+
+            <div class="information-row">
+                <strong>Name</strong>
+                <span>{{ shipment["sender_name"] }}</span>
+            </div>
+
+            <div class="information-row">
+                <strong>Address</strong>
+                <span>{{ shipment["sender_address"] or "Not provided" }}</span>
+            </div>
+
+            <div class="information-row">
+                <strong>Phone</strong>
+                <span>{{ shipment["sender_phone"] or "Not provided" }}</span>
+            </div>
+
+            <div class="information-row">
+                <strong>Country</strong>
+                <span>{{ shipment["sender_country"] or "Country not provided" }}</span>
+            </div>
+
+        </div>
+
+
+        <div class="information-card">
+
+            <div class="section-title">
+                <span>🏠</span>
+                <h2>Receiver Information</h2>
+            </div>
+
+            <div class="information-row">
+                <strong>Name</strong>
+                <span>{{ shipment["receiver_name"] }}</span>
+            </div>
+
+            <div class="information-row">
+                <strong>Address</strong>
+                <span>{{ shipment["receiver_address"] or "Not provided" }}</span>
+            </div>
+
+            <div class="information-row">
+                <strong>Phone</strong>
+                <span>{{ shipment["receiver_phone"] or "Not provided" }}</span>
+            </div>
+
+            <div class="information-row">
+                <strong>Country</strong>
+                <span>{{ shipment["receiver_country"] or "Country not provided" }}</span>
+            </div>
+
+        </div>
+
+
+        <div class="information-card">
+
+            <div class="section-title">
+                <span>🕒</span>
+                <h2>Shipment Dates</h2>
+            </div>
+
+            <div class="information-row">
+                <strong>Date Sent</strong>
+                <span>{{ shipment["send_datetime"] or shipment["created_at"] }}</span>
+            </div>
+
+            <div class="information-row">
+                <strong>Receiving / Delivery Date</strong>
+                <span>{{ shipment["delivery_datetime"] or shipment["estimated_delivery"] }}</span>
+            </div>
+
+        </div>
+
+
+        <div class="information-card">
+
+            <div class="section-title">
+                <span>📦</span>
+                <h2>Package Information</h2>
+            </div>
+
+            <div class="information-row">
+                <strong>Description</strong>
+                <span>{{ shipment["package_description"] or "Not provided" }}</span>
+            </div>
+
+            <div class="information-row">
+                <strong>Weight</strong>
+                <span>{{ shipment["package_weight"] or "Not provided" }}</span>
+            </div>
+
+            <div class="information-row">
+                <strong>Number of Packages</strong>
+                <span>{{ shipment["package_count"] or 1 }}</span>
+            </div>
+
+        </div>
+
+
+        <div class="information-card">
+
+            <div class="section-title">
+                <span>🌍</span>
+                <h2>Shipment Route</h2>
+            </div>
+
+            <div class="route-display">
+
+                <div class="route-place">
+                    <span>📦</span>
+                    <strong>{{ shipment["origin"] }}</strong>
+                    <small>FROM</small>
+                </div>
+
+                <div class="route-arrow">
+                    ➜
+                </div>
+
+                <div class="route-place">
+                    <span>📍</span>
+                    <strong>{{ shipment["current_location"] }}</strong>
+                    <small>CURRENT</small>
+                </div>
+
+                <div class="route-arrow">
+                    ➜
+                </div>
+
+                <div class="route-place">
+                    <span>🏠</span>
+                    <strong>{{ shipment["destination"] }}</strong>
+                    <small>TO</small>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="history-card">
+
+            <div class="section-title">
+                <span>🚚</span>
+                <h2>Tracking History</h2>
+            </div>
+
+            {% if events %}
+
+            <div class="timeline">
+
+                {% for event in events %}
+
+                <div class="timeline-item">
+
+                    <div class="timeline-dot">
+                        ✓
+                    </div>
+
+                    <div class="timeline-content">
+
+                        <h3>{{ event["status"] }}</h3>
+
+                        <p>
+                            <strong>📍 Location:</strong>
+                            {{ event["location"] }}
+                        </p>
+
+                        {% if event["description"] %}
+                        <p>{{ event["description"] }}</p>
+                        {% endif %}
+
+                        <small>
+                            {{ event["event_time"] }}
+                        </small>
+
+                    </div>
+
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+            {% else %}
+
+            <p>No tracking events available.</p>
+
+            {% endif %}
+
+        </div>
+
+
+        <div class="tracking-actions">
+
+            <a href="{{ url_for('receipt', tracking_id=shipment['tracking_id']) }}">
+                🧾 View Shipment Receipt
+            </a>
+
+            <a href="{{ url_for('track_lookup') }}">
+                🔎 Track Another Shipment
+            </a>
+
+        
+            {% if session.get("admin_logged_in") %}
+            <a href="{{ url_for('admin') }}">
+                🏠 Back to Dashboard
+            </a>
+            {% endif %}
+</div>
+
+
+        <div class="simulation-footer">
+            <strong>FedEx Delivery</strong>
+            <p>
+                DEMO / SIMULATION ONLY — FedEx Delivery shipment record.
+            </p>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,51 +1,147 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin Dashboard - Tracking Simulator</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edit Shipment</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    background: #f3f1f6;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #222;
+}
+
+.container {
+    max-width: 700px;
+    margin: auto;
+}
+
+.header {
+    background: #3b1f5c;
+    color: white;
+    padding: 20px;
+    border-radius: 10px 10px 0 0;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.header p {
+    margin: 6px 0 0;
+    font-size: 12px;
+}
+
+.form {
+    background: white;
+    padding: 18px;
+    border-radius: 0 0 10px 10px;
+}
+
+.section {
+    margin-bottom: 20px;
+}
+
+.section-title {
+    color: #3b1f5c;
+    font-weight: 900;
+    font-size: 13px;
+    border-bottom: 2px solid #3b1f5c;
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+}
+
+label {
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+    margin: 10px 0 5px;
+}
+
+input,
+select {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    background: white;
+}
+
+button,
+.back {
+    display: block;
+    width: 100%;
+    padding: 13px;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: 900;
+    text-align: center;
+    text-decoration: none;
+}
+
+button {
+    border: 0;
+    background: #3b1f5c;
+    color: white;
+    cursor: pointer;
+}
+
+.back {
+    margin-top: 10px;
+    border: 2px solid #3b1f5c;
+    color: #3b1f5c;
+    background: white;
+}
+
+.note {
+    background: #f5f0fa;
+    border-left: 4px solid #3b1f5c;
+    padding: 10px;
+    font-size: 11px;
+    margin-bottom: 18px;
+}
+</style>
 </head>
 
 <body>
-<div class="page">
+
 <div class="container">
-<div class="card">
 
-<h1>FedEx Delivery</h1>
+    <div class="header">
+        <h1>Edit Shipment</h1>
+        <p>Tracking ID: {{ shipment["tracking_id"] }}</p>
+    </div>
 
-<div class="demo">
-ADMIN DASHBOARD — SIMULATION
-</div>
+    <form class="form" method="POST">
 
-<h2>Create Shipment</h2>
+        <div class="note">
+            Changes made here will update the shipment information used by
+            the Tracking and Receipt pages.
+        </div>
 
-<form method="POST">
+        <div class="section">
 
-<h3>Sender Details</h3>
+            <div class="section-title">SENDER DETAILS</div>
 
-<input name="sender_name" placeholder="Sender Name" required>
+            <label>Sender Name</label>
+            <input
+                type="text"
+                name="sender_name"
+                value="{{ shipment['sender_name'] or '' }}"
+                required
+            >
 
-<input name="sender_country" placeholder="Sender Country">
-
-<input name="sender_address" placeholder="Sender Address">
-
-<input name="sender_phone" placeholder="Sender Phone">
-
-<h3>Receiver Details</h3>
-
-<input name="receiver_name" placeholder="Receiver Name" required>
-
-<input name="receiver_country" placeholder="Receiver Country">
-
-<input name="receiver_address" placeholder="Receiver Address">
-
-<input name="receiver_phone" placeholder="Receiver Phone">
-
-<h3>Shipment Details</h3>
-
-<label>From Country</label>
-<select name="origin" required>
-    <option value="">Select country</option>
+            <label>Sender Country</label>
+            <select name="sender_country">
+                <option value="">Select country</option>
 
 <option value="Afghanistan">Afghanistan</option>
 <option value="Albania">Albania</option>
@@ -240,11 +336,40 @@ ADMIN DASHBOARD — SIMULATION
 <option value="Yemen">Yemen</option>
 <option value="Zambia">Zambia</option>
 <option value="Zimbabwe">Zimbabwe</option>
-</select>
 
-<label>To Country</label>
-<select name="destination" required>
-    <option value="">Select country</option>
+            </select>
+
+            <label>Sender Address</label>
+            <input
+                type="text"
+                name="sender_address"
+                value="{{ shipment['sender_address'] or '' }}"
+            >
+
+            <label>Sender Phone</label>
+            <input
+                type="text"
+                name="sender_phone"
+                value="{{ shipment['sender_phone'] or '' }}"
+            >
+
+        </div>
+
+        <div class="section">
+
+            <div class="section-title">RECEIVER DETAILS</div>
+
+            <label>Receiver Name</label>
+            <input
+                type="text"
+                name="receiver_name"
+                value="{{ shipment['receiver_name'] or '' }}"
+                required
+            >
+
+            <label>Receiver Country</label>
+            <select name="receiver_country">
+                <option value="">Select country</option>
 
 <option value="Afghanistan">Afghanistan</option>
 <option value="Albania">Albania</option>
@@ -439,194 +564,124 @@ ADMIN DASHBOARD — SIMULATION
 <option value="Yemen">Yemen</option>
 <option value="Zambia">Zambia</option>
 <option value="Zimbabwe">Zimbabwe</option>
-</select>
 
-<label>Current Location</label>
-<select name="current_location" required>
-    <option value="">Select current location</option>
-    <option value="London, United Kingdom">London, United Kingdom</option>
-    <option value="Birmingham, United Kingdom">Birmingham, United Kingdom</option>
-    <option value="Manchester, United Kingdom">Manchester, United Kingdom</option>
-    <option value="Liverpool, United Kingdom">Liverpool, United Kingdom</option>
-    <option value="Paris, France">Paris, France</option>
-    <option value="Berlin, Germany">Berlin, Germany</option>
-    <option value="Madrid, Spain">Madrid, Spain</option>
-    <option value="Lisbon, Portugal">Lisbon, Portugal</option>
-    <option value="Rome, Italy">Rome, Italy</option>
-    <option value="Amsterdam, Netherlands">Amsterdam, Netherlands</option>
-    <option value="São Paulo, Brazil">São Paulo, Brazil</option>
-    <option value="Rio de Janeiro, Brazil">Rio de Janeiro, Brazil</option>
-    <option value="Brasília, Brazil">Brasília, Brazil</option>
-    <option value="Lagos, Nigeria">Lagos, Nigeria</option>
-    <option value="Abuja, Nigeria">Abuja, Nigeria</option>
-    <option value="Accra, Ghana">Accra, Ghana</option>
-    <option value="Nairobi, Kenya">Nairobi, Kenya</option>
-    <option value="Johannesburg, South Africa">Johannesburg, South Africa</option>
-    <option value="New York, United States">New York, United States</option>
-    <option value="Los Angeles, United States">Los Angeles, United States</option>
-    <option value="Toronto, Canada">Toronto, Canada</option>
-    <option value="Dubai, United Arab Emirates">Dubai, United Arab Emirates</option>
-    <option value="Mumbai, India">Mumbai, India</option>
-    <option value="Delhi, India">Delhi, India</option>
-    <option value="Tokyo, Japan">Tokyo, Japan</option>
-    <option value="Singapore, Singapore">Singapore, Singapore</option>
-    <option value="Beijing, China">Beijing, China</option>
-</select>
+            </select>
 
-<input name="status" placeholder="Status" value="Shipment Created" required>
+            <label>Receiver Address</label>
+            <input
+                type="text"
+                name="receiver_address"
+                value="{{ shipment['receiver_address'] or '' }}"
+            >
 
-<label>Send Date & Time</label>
-<input name="send_datetime" type="datetime-local">
+            <label>Receiver Phone</label>
+            <input
+                type="text"
+                name="receiver_phone"
+                value="{{ shipment['receiver_phone'] or '' }}"
+            >
 
-<label>Receiving / Delivery Date & Time</label>
-<input name="delivery_datetime" type="datetime-local">
+        </div>
 
-<input name="estimated_delivery" placeholder="Estimated Delivery" required>
+        <div class="section">
 
-<input name="package_description" placeholder="Package Description">
+            <div class="section-title">SHIPMENT DETAILS</div>
 
-<input name="package_weight" placeholder="Package Weight">
+            <label>From Country</label>
+            <input
+                type="text"
+                name="origin"
+                value="{{ shipment['origin'] or '' }}"
+                required
+            >
 
-<input name="package_count"
-       type="number"
-       min="1"
-       value="1"
-       placeholder="Number of Packages">
+            <label>To Country</label>
+            <input
+                type="text"
+                name="destination"
+                value="{{ shipment['destination'] or '' }}"
+                required
+            >
 
-<button type="submit">Create Shipment</button>
+            <label>Current Location</label>
+            <input
+                type="text"
+                name="current_location"
+                value="{{ shipment['current_location'] or '' }}"
+                required
+            >
 
-</form>
+            <label>Status</label>
+            <input
+                type="text"
+                name="status"
+                value="{{ shipment['status'] or '' }}"
+                required
+            >
 
-<hr>
+            <label>Estimated Delivery</label>
+            <input
+                type="text"
+                name="estimated_delivery"
+                value="{{ shipment['estimated_delivery'] or '' }}"
+            >
 
-<h2>Existing Shipments</h2>
+            <label>Send Date & Time</label>
+            <input
+                type="datetime-local"
+                name="send_datetime"
+                value="{{ shipment['send_datetime'] or '' }}"
+            >
 
-{% if shipments %}
+            <label>Delivery Date & Time</label>
+            <input
+                type="datetime-local"
+                name="delivery_datetime"
+                value="{{ shipment['delivery_datetime'] or '' }}"
+            >
 
-{% for shipment in shipments %}
+        </div>
 
-<div class="info-box">
+        <div class="section">
 
-<h3>{{ shipment["tracking_id"] }}</h3>
+            <div class="section-title">PACKAGE DETAILS</div>
 
-<div class="tracking-link-box">
-<strong>Tracking Link</strong>
-<input
-    type="text"
-    readonly
-    value="https://primevault-ygtn.onrender.com/track/{{ shipment['tracking_id'] }}"
-    id="tracking-{{ shipment['id'] }}">
-<button
-    type="button"
-    onclick="copyTrackingLink('tracking-{{ shipment['id'] }}')">
-    Copy
-</button>
-</div>
+            <label>Package Description</label>
+            <input
+                type="text"
+                name="package_description"
+                value="{{ shipment['package_description'] or '' }}"
+            >
 
-<p>
-<strong>Receiver:</strong>
-{{ shipment["receiver_name"] }}
-</p>
+            <label>Package Weight</label>
+            <input
+                type="text"
+                name="package_weight"
+                value="{{ shipment['package_weight'] or '' }}"
+            >
 
-<p>
-<strong>Status:</strong>
-{{ shipment["status"] }}
-</p>
+            <label>Package Count</label>
+            <input
+                type="number"
+                name="package_count"
+                min="1"
+                value="{{ shipment['package_count'] or 1 }}"
+            >
 
-<p>
-<strong>Current Location:</strong>
-{{ shipment["current_location"] }}
-</p>
+        </div>
 
-<h4>Shipment Actions</h4>
+        <button type="submit">Save Shipment Changes</button>
 
-<a href="{{ url_for('shipment', tracking_id=shipment['tracking_id']) }}">
-View Tracking
-</a>
+        <a
+            class="back"
+            href="{{ url_for('admin') }}"
+        >
+            Cancel / Back to Admin
+        </a>
 
-<br><br>
-
-<button type="button"
-        onclick="shareTracking('https://primevault-ygtn.onrender.com/track/{{ shipment['tracking_id'] }}')">
-    Share Tracking Link
-</button>
-
-<br><br>
-
-<a href="{{ url_for('receipt', tracking_id=shipment['tracking_id']) }}">
-View Receipt
-</a>
-
-<br><br>
-
-<a href="{{ url_for('edit_shipment', shipment_id=shipment['id']) }}">
-Edit Shipment
-</a>
-
-<br><br>
-
-<a href="{{ url_for('add_event', shipment_id=shipment['id']) }}">
-Add Tracking Event
-</a>
+    </form>
 
 </div>
-
-<br>
-
-{% endfor %}
-
-{% else %}
-
-<p>No shipments created yet.</p>
-
-{% endif %}
-
-<br>
-
-<a href="{{ url_for('logout') }}">Logout</a>
-
-</div>
-</div>
-</div>
-
-<script>
-async function shareTracking(link) {
-    try {
-        if (navigator.share) {
-            await navigator.share({
-                title: "Shipment Tracking",
-                text: "Track this shipment:",
-                url: link
-            });
-        } else if (navigator.clipboard) {
-            await navigator.clipboard.writeText(link);
-            alert("Tracking link copied.");
-        } else {
-            prompt("Copy this tracking link:", link);
-        }
-    } catch (error) {
-        if (error.name !== "AbortError") {
-            alert("Unable to share the tracking link.");
-        }
-    }
-}
-</script>
-
-
-<script>
-function copyTrackingLink(id) {
-    const field = document.getElementById(id);
-
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(field.value);
-        alert("Tracking link copied.");
-    } else {
-        field.select();
-        document.execCommand("copy");
-        alert("Tracking link copied.");
-    }
-}
-</script>
 
 </body>
 </html>

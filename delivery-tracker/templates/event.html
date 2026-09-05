@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Add Tracking Event</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="page">
+<div class="container">
+<div class="card">
+
+<h1>Add Tracking Event</h1>
+
+<div class="demo">
+DEMO / SIMULATION
+</div>
+
+<h2>{{ shipment["tracking_id"] }}</h2>
+
+<p><strong>Receiver:</strong> {{ shipment["receiver_name"] }}</p>
+
+<hr>
+
+<form method="POST">
+
+<input name="location"
+       placeholder="Location"
+       value="{{ shipment['current_location'] }}"
+       required>
+
+<input name="status"
+       placeholder="Status"
+       value="{{ shipment['status'] }}"
+       required>
+
+<textarea name="description"
+          placeholder="Event description"
+          rows="4"
+          required></textarea>
+
+<button type="submit">Add Tracking Event</button>
+
+</form>
+
+<hr>
+
+<h2>Previous Events</h2>
+
+{% if events %}
+
+{% for event in events %}
+
+<div class="info-box">
+
+<h3>{{ event["status"] }}</h3>
+
+<p><strong>Location:</strong> {{ event["location"] }}</p>
+
+<p>{{ event["description"] }}</p>
+
+<p><small>{{ event["event_time"] }}</small></p>
+
+</div>
+
+<br>
+
+{% endfor %}
+
+{% else %}
+
+<p>No tracking events yet.</p>
+
+{% endif %}
+
+<br>
+
+<a href="{{ url_for('admin') }}">← Back to Admin Dashboard</a>
+
+</div>
+</div>
+</div>
+</body>
+</html>
