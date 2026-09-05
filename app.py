@@ -269,7 +269,14 @@ def init_db():
             1000000000.00
         ))
 
-    # Account activation column is managed by the existing database schema.
+    # Add account activation support to older databases.
+    try:
+        cur.execute("SAVEPOINT account_active_migration")
+        cur.execute("ALTER TABLE accounts ADD COLUMN active INTEGER DEFAULT 1")
+        cur.execute("RELEASE SAVEPOINT account_active_migration")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT account_active_migration")
+        cur.execute("RELEASE SAVEPOINT account_active_migration")
 
     conn.commit()
     conn.close()
@@ -1324,7 +1331,7 @@ def dashboard():
     d = dashboard_text.get(language, dashboard_text["English"])
 
     notification_count = conn.execute("""
-        SELECT COUNT(*) FROM notifications
+        SELECT COUNT(*) AS count FROM notifications
         WHERE user_id = ? AND is_read = 0
     """, (user["id"],)).fetchone()["count"]
 
@@ -1895,9 +1902,13 @@ def transfer():
 
         transfer_type = request.form.get("transfer_type", "primevault")
         receiver_account = request.form.get("receiver_account", "").strip()
+
+        if request.form.get("transfer_type") == "other_bank":
+            receiver_account = request.form.get("bank_receiver_account", "").strip()
         receiver_name = request.form.get("receiver_name", "").strip()
         receiver_bank = request.form.get("receiver_bank", "").strip()
         description = request.form.get("description", "").strip()
+
 
         try:
             amount = float(request.form.get("amount", "0"))
@@ -1935,12 +1946,11 @@ def transfer():
 
         if len(pin) != 4 or not check_password_hash(user["transfer_pin"], pin):
             conn.close()
-            return render_template_string("""
-            <script>
-            alert("Incorrect transfer PIN.");
-            history.back();
-            </script>
-            """)
+            session["transfer_error"] = "Incorrect transfer PIN."
+            return redirect(url_for(
+                "transfer",
+                mode="bank" if transfer_type == "other_bank" else "primevault"
+            ))
 
         transaction_id = "PV" + secrets.token_hex(8).upper()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1993,12 +2003,13 @@ def transfer():
 
             if not receiver_account or not receiver_name or not receiver_bank:
                 conn.close()
-                return render_template_string("""
-                <script>
-                alert("Complete the receiver details.");
-                history.back();
-                </script>
-                """)
+                session["transfer_error"] = "Complete the receiver details."
+                return redirect(url_for("transfer", mode="bank"))
+
+            if not receiver_account.isdigit() or len(receiver_account) != 11:
+                conn.close()
+                session["transfer_error"] = "Other Bank account number must be exactly 11 digits."
+                return redirect(url_for("transfer", mode="bank"))
 
             receiver_user_id = None
 
@@ -2046,6 +2057,9 @@ def transfer():
         conn.close()
 
         return redirect(url_for("receipt", transaction_id=transaction_id))
+
+    mode = request.args.get("mode", "primevault")
+    transfer_error = session.pop("transfer_error", None)
 
     conn.close()
 
@@ -2293,7 +2307,7 @@ textarea {
 <input type="hidden"
        name="transfer_type"
        id="transferType"
-       value="primevault">
+       value="{{ "other_bank" if mode == "bank" else "primevault" }}">
 
 
 <div class="tabs">
@@ -2325,6 +2339,11 @@ textarea {
     Choose where you want the simulated funds to go.
 </div>
 
+{% if transfer_error %}
+<div style="color:#dc2626;background:#fef2f2;border:1px solid #fecaca;padding:10px 12px;border-radius:10px;margin-bottom:12px;font-weight:700;font-size:13px;">
+    {{ transfer_error }}
+</div>
+{% endif %}
 
 <div id="primeFields">
 
@@ -2349,14 +2368,11 @@ textarea {
 
 <select name="receiver_bank" id="bankName">
     <option value="">{% if user["language"] == "Portuguese" %}Selecionar banco{% elif user["language"] == "Spanish" %}Seleccionar banco{% else %}Select bank{% endif %}</option>
-    <option>Access Bank</option>
-    <option>GTBank</option>
-    <option>First Bank</option>
-    <option>UBA</option>
-    <option>Zenith Bank</option>
-    <option>Opay</option>
-    <option>PalmPay</option>
-    <option>Other Bank</option>
+    <option>Banco Agibank S</option>
+    <option>PicPay</option>
+    <option>PagBank</option>
+    <option>Santander</option>
+    <option>Itaú</option>
 </select>
 </div>
 
@@ -2366,10 +2382,14 @@ textarea {
 
 <input
     type="text"
-    name="receiver_account"
+    name="bank_receiver_account"
     id="bankAccount"
     placeholder="{% if user["language"] == "Portuguese" %}Digite o número da conta{% elif user["language"] == "Spanish" %}Introduce el número de cuenta{% else %}Enter account number{% endif %}"
-    autocomplete="off">
+    autocomplete="off"
+    inputmode="numeric"
+    maxlength="11"
+    pattern="[0-9]{11}"
+    required>
 </div>
 
 
@@ -2495,11 +2515,19 @@ function showOtherBank() {
     document.getElementById("bankName").required = true;
 }
 
+window.addEventListener("load", function() {
+    if ("{{ mode }}" === "bank") {
+        showOtherBank();
+    } else {
+        showPrimeVault();
+    }
+});
+
 </script>
 
 </body>
 </html>
-""", user=user, account=account)
+""", user=user, account=account, transfer_error=transfer_error, mode=mode)
 
 
 @app.route("/receipt/<transaction_id>")
@@ -3912,18 +3940,13 @@ def change_pin():
     success = False
 
     if request.method == "POST":
-        current_pin = request.form.get("current_pin", "").strip()
         new_pin = request.form.get("new_pin", "").strip()
         confirm_pin = request.form.get("confirm_pin", "").strip()
 
-        if not check_password_hash(user["transfer_pin"], current_pin):
-            message = "Current PIN is incorrect."
-        elif not new_pin.isdigit() or len(new_pin) != 4:
+        if not new_pin.isdigit() or len(new_pin) != 4:
             message = "New PIN must be exactly 4 digits."
         elif new_pin != confirm_pin:
             message = "New PINs do not match."
-        elif new_pin == current_pin:
-            message = "New PIN must be different from your current PIN."
         else:
             conn = db()
             conn.execute(
@@ -3933,6 +3956,20 @@ def change_pin():
             conn.commit()
             conn.close()
             success = True
+            print("PIN CHANGE SUCCESS: success =", success)
+            return page("PIN Changed Successfully", render_template_string("""
+<div class="card" style="text-align:center;">
+    <div style="font-size:64px;margin-bottom:10px;">✓</div>
+    <h2 style="color:#166534;">Transfer PIN Changed Successfully</h2>
+    <p style="color:#64748b;">
+        Your new 4-digit Transfer PIN has been updated successfully.
+    </p>
+    <a href="/settings/change-pin"
+       style="display:inline-block;margin-top:15px;padding:12px 18px;background:#111827;color:white;border-radius:10px;text-decoration:none;">
+        Back to Change PIN
+    </a>
+</div>
+"""))
 
     language = user["language"] or "English"
 
@@ -3949,22 +3986,22 @@ def change_pin():
     {% endif %}
 
     {% if success %}
-    <div style="padding:14px;border-radius:12px;background:#dcfce7;color:#166534;font-weight:700;margin-bottom:16px;">
-        {% if language == "Portuguese" %}PIN alterado com sucesso.
-        {% elif language == "Spanish" %}PIN cambiado correctamente.
-        {% else %}Transfer PIN changed successfully.{% endif %}
+    <div style="padding:18px;border-radius:14px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;font-weight:700;margin-bottom:16px;text-align:center;">
+        <div style="font-size:36px;margin-bottom:6px;">✓</div>
+        <div style="font-size:17px;">
+            {% if language == "Portuguese" %}PIN alterado com sucesso.
+            {% elif language == "Spanish" %}PIN cambiado correctamente.
+            {% else %}Transfer PIN Changed Successfully{% endif %}
+        </div>
+        <div style="font-size:12px;font-weight:500;margin-top:6px;">
+            {% if language == "Portuguese" %}Seu novo PIN de transferência foi atualizado com sucesso.
+            {% elif language == "Spanish" %}Tu nuevo PIN de transferencia se actualizó correctamente.
+            {% else %}Your new Transfer PIN has been updated successfully.{% endif %}
+        </div>
     </div>
     {% endif %}
 
     <form method="POST">
-
-        <label>Current Transfer PIN</label>
-        <input type="password"
-               name="current_pin"
-               inputmode="numeric"
-               maxlength="4"
-               pattern="[0-9]{4}"
-               required>
 
         <label>New 4-digit PIN</label>
         <input type="password"
@@ -4870,4 +4907,4 @@ init_db()
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    app.run(host="127.0.0.1", port=5001, debug=False)
