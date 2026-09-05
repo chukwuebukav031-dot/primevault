@@ -514,7 +514,7 @@ ADMIN DASHBOARD — SIMULATION
 <input
     type="text"
     readonly
-    value="https://primevault-ygtn.onrender.com/track/{{ shipment['tracking_id'] }}"
+    value="https://primevault-delivery-tracker.onrender.com/track/{{ shipment['tracking_id'] }}"
     id="tracking-{{ shipment['id'] }}">
 <button
     type="button"
@@ -547,7 +547,7 @@ View Tracking
 <br><br>
 
 <button type="button"
-        onclick="shareTracking('https://primevault-ygtn.onrender.com/track/{{ shipment['tracking_id'] }}')">
+        onclick="shareTracking('https://primevault-delivery-tracker.onrender.com/track/{{ shipment['tracking_id'] }}')">
     Share Tracking Link
 </button>
 
