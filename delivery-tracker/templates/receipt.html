@@ -245,9 +245,7 @@
 
     <a href="{{ url_for('shipment', tracking_id=shipment['tracking_id']) }}">Back to Tracking</a>
 
-{% if session.get("admin_logged_in") %}
-    <a href="{{ url_for('admin') }}">🏠 Back to Dashboard</a>
-{% endif %}
+
 </div>
 
 </body>
