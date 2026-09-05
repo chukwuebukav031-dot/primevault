@@ -269,6 +269,15 @@ def init_db():
             1000000000.00
         ))
 
+    # Add persistent currency preference to existing users.
+    try:
+        cur.execute("SAVEPOINT user_currency_migration")
+        cur.execute("ALTER TABLE users ADD COLUMN currency TEXT DEFAULT 'USD'")
+        cur.execute("RELEASE SAVEPOINT user_currency_migration")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT user_currency_migration")
+        cur.execute("RELEASE SAVEPOINT user_currency_migration")
+
     # Add account activation support to older databases.
     try:
         cur.execute("SAVEPOINT account_active_migration")
@@ -1258,7 +1267,8 @@ def dashboard():
 
     # Currency display settings for the local simulator.
     # The stored account balance remains USD.
-    currency = request.args.get("currency", "USD")
+    requested_currency = request.args.get("currency")
+    currency = requested_currency or user["currency"] or "USD"
 
     currencies = {
         "USD": {"name": "US Dollar", "symbol": "$", "rate": 1.0},
@@ -1270,6 +1280,14 @@ def dashboard():
 
     if currency not in currencies:
         currency = "USD"
+
+    if requested_currency in currencies and requested_currency != user["currency"]:
+        conn.execute(
+            "UPDATE users SET currency = ? WHERE id = ?",
+            (requested_currency, user["id"])
+        )
+        conn.commit()
+        currency = requested_currency
 
     selected_currency = currencies[currency]
     converted_balance = account["balance"] * selected_currency["rate"]
