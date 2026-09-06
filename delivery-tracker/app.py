@@ -77,7 +77,9 @@ def send_push_notification(role, tracking_id=None, title="New message", body="Yo
                     "sub": vapid_claims_email
                 }
             )
-        except WebPushException as error:
+        except Exception as error:
+            print(f"Push notification failed: {error}")
+
             status_code = getattr(
                 getattr(error, "response", None),
                 "status_code",
@@ -92,7 +94,6 @@ def send_push_notification(role, tracking_id=None, title="New message", body="Yo
 
     conn.commit()
     conn.close()
-
 
 def make_tracking_id():
     return "FDX" + secrets.token_hex(5).upper()
