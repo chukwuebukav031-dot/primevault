@@ -2383,3 +2383,218 @@ body .receipt-page .receipt .receipt-header * {
     }
 }
 
+
+/* =========================================================
+   CORREIOS TRACKING — PROFESSIONAL VISUAL POLISH
+   Visual-only overrides. Does not change app logic/database.
+   ========================================================= */
+
+.tracking-results {
+    background: #F3F4F6;
+    padding-bottom: 50px;
+}
+
+.tracking-top {
+    background: linear-gradient(135deg, #0B1F3A 0%, #123B6D 100%);
+    padding: 38px 20px 55px;
+}
+
+.tracking-top .demo {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.20);
+    letter-spacing: .4px;
+}
+
+.tracking-top h1 {
+    font-size: 34px;
+    letter-spacing: -.4px;
+}
+
+.tracking-top p {
+    opacity: .88;
+}
+
+.results-container {
+    max-width: 980px;
+    padding: 0 18px;
+}
+
+.tracking-approval {
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 4px 16px rgba(11,31,58,.07);
+}
+
+.status-card,
+.location-card,
+.information-card,
+.history-card {
+    border: 1px solid #E5E7EB;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(11,31,58,.07);
+}
+
+.status-card {
+    border-left: 4px solid #16A34A;
+}
+
+.small-label {
+    color: #64748B;
+    letter-spacing: .5px;
+}
+
+.status-card h2 {
+    color: #0B1F3A;
+    font-size: 25px;
+}
+
+.status-icon {
+    background: #EFF6FF;
+}
+
+.section-title {
+    border-bottom: 1px solid #E5E7EB;
+    padding-bottom: 13px;
+}
+
+.section-title h2 {
+    color: #0B1F3A;
+}
+
+.location-details {
+    border-top: 1px solid #E5E7EB;
+    margin-top: 15px;
+}
+
+.overview-grid {
+    gap: 14px;
+}
+
+.detail-card {
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 4px 14px rgba(11,31,58,.06);
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.detail-card h3 {
+    color: #64748B;
+}
+
+.detail-card strong {
+    color: #0B1F3A;
+}
+
+.information-row {
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.information-row strong {
+    color: #64748B;
+}
+
+.information-row span {
+    color: #1F2937;
+}
+
+.route-place {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+}
+
+.route-display .route-place strong {
+    color: #0B1F3A;
+}
+
+.route-display .route-place small {
+    color: #64748B;
+}
+
+.route-display .route-arrow {
+    color: #2563EB;
+}
+
+.timeline-item:not(:last-child)::before {
+    width: 2px;
+    background: #CBD5E1;
+}
+
+.timeline-dot {
+    background: #2563EB;
+}
+
+.timeline-content {
+    background: #F8FAFC;
+    border: 1px solid #E5E7EB;
+}
+
+.timeline-content h3 {
+    color: #0B1F3A;
+}
+
+.tracking-actions a {
+    background: #0B1F3A;
+    border: 1px solid #0B1F3A;
+    transition: opacity .15s ease, transform .15s ease;
+}
+
+.tracking-actions a:hover {
+    opacity: .92;
+    transform: translateY(-1px);
+}
+
+.simulation-footer {
+    color: #64748B;
+}
+
+.simulation-footer strong {
+    color: #0B1F3A;
+}
+
+/* Delivery photo cards */
+.history-card img {
+    border: 1px solid #E5E7EB;
+}
+
+/* Mobile polish */
+@media (max-width: 700px) {
+    .tracking-top {
+        padding: 30px 16px 48px;
+    }
+
+    .tracking-top h1 {
+        font-size: 28px;
+    }
+
+    .results-container {
+        padding: 0 12px;
+    }
+
+    .status-card,
+    .location-card,
+    .information-card,
+    .history-card {
+        padding: 19px;
+        border-radius: 12px;
+    }
+
+    .overview-grid {
+        gap: 10px;
+    }
+
+    .detail-card {
+        padding: 16px;
+    }
+
+    .information-row {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .information-row span {
+        text-align: left;
+    }
+
+    .route-display {
+        gap: 3px !important;
+    }
+}
+
