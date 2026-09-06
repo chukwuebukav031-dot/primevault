@@ -930,6 +930,8 @@ document.addEventListener("DOMContentLoaded", async function() {
         return;
     }
 
+    const notificationPreferenceKey = "primevault_admin_notifications";
+
     try {
         const registration = await navigator.serviceWorker.register(
             "{{ url_for('static', filename='service-worker.js') }}"
@@ -938,12 +940,84 @@ document.addEventListener("DOMContentLoaded", async function() {
         const existingSubscription =
             await registration.pushManager.getSubscription();
 
-        if (existingSubscription) {
+        const savedPreference =
+            localStorage.getItem(notificationPreferenceKey);
+
+        async function savePushSubscription(subscription) {
+            const response = await fetch("/push/subscribe", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    role: "admin",
+                    subscription: subscription.toJSON()
+                })
+            });
+
+            if (!response.ok) {
+                const serverError = await response.text();
+                throw new Error(
+                    "Server " + response.status + ": " + serverError
+                );
+            }
+        }
+
+        if (savedPreference === "off") {
+            toggle.checked = false;
+
+            if (existingSubscription) {
+                const endpoint = existingSubscription.endpoint;
+                await existingSubscription.unsubscribe();
+
+                await fetch("/push/unsubscribe", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        endpoint: endpoint
+                    })
+                });
+            }
+        } else if (existingSubscription) {
             toggle.checked = true;
+            localStorage.setItem(notificationPreferenceKey, "on");
+            await savePushSubscription(existingSubscription);
+        } else {
+            toggle.checked = false;
         }
 
         toggle.addEventListener("change", async function() {
             if (!this.checked) {
+                localStorage.setItem(notificationPreferenceKey, "off");
+
+                try {
+                    const subscription =
+                        await registration.pushManager.getSubscription();
+
+                    if (subscription) {
+                        const endpoint = subscription.endpoint;
+
+                        await subscription.unsubscribe();
+
+                        await fetch("/push/unsubscribe", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                endpoint: endpoint
+                            })
+                        });
+                    }
+                } catch (error) {
+                    console.error(
+                        "Admin notification unsubscribe failed:",
+                        error
+                    );
+                }
+
                 return;
             }
 
@@ -952,39 +1026,63 @@ document.addEventListener("DOMContentLoaded", async function() {
 
                 if (permission !== "granted") {
                     this.checked = false;
+                    localStorage.setItem(
+                        notificationPreferenceKey,
+                        "off"
+                    );
                     return;
+                }
+
+                const oldSubscription =
+                    await registration.pushManager.getSubscription();
+
+                if (oldSubscription) {
+                    await oldSubscription.unsubscribe();
                 }
 
                 const subscription =
                     await registration.pushManager.subscribe({
                         userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array("{{ config.VAPID_PUBLIC_KEY }}")
+                        applicationServerKey:
+                            urlBase64ToUint8Array(
+                                "{{ config.VAPID_PUBLIC_KEY }}"
+                            )
                     });
 
-                const response = await fetch("/push/subscribe", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        role: "admin",
-                        subscription: subscription.toJSON()
-                    })
-                });
+                await savePushSubscription(subscription);
 
-                if (!response.ok) {
-                    throw new Error("Subscription failed");
-                }
+                localStorage.setItem(
+                    notificationPreferenceKey,
+                    "on"
+                );
 
             } catch (error) {
-                console.error("Admin notification setup failed:", error);
+                console.error(
+                    "Admin notification setup failed:",
+                    error
+                );
+
                 this.checked = false;
-                alert("Notifications could not be enabled.");
+
+                localStorage.setItem(
+                    notificationPreferenceKey,
+                    "off"
+                );
+
+                alert(
+                    "Notification setup failed: " +
+                    (error && error.name
+                        ? error.name + " — " + error.message
+                        : error)
+                );
             }
         });
 
     } catch (error) {
-        console.error("Service worker registration failed:", error);
+        console.error(
+            "Service worker registration failed:",
+            error
+        );
         toggle.checked = false;
     }
 });
