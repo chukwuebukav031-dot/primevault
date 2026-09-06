@@ -168,6 +168,38 @@ def init_db():
     add_column(conn, "shipments", "send_datetime", "TEXT")
     add_column(conn, "shipments", "delivery_datetime", "TEXT")
 
+    if DATABASE_URL:
+        print("=== POSTGRES COLUMN DEFAULTS ===")
+        rows = conn.execute("""
+            SELECT table_name, column_name, column_default
+            FROM information_schema.columns
+            WHERE table_name IN ('shipments', 'tracking_events', 'shipment_photos')
+            ORDER BY table_name, ordinal_position
+        """).fetchall()
+
+        for row in rows:
+            print(row)
+
+        print("=== POSTGRES TRIGGERS ===")
+        rows = conn.execute("""
+            SELECT
+                c.relname,
+                t.tgname,
+                pg_get_triggerdef(t.oid)
+            FROM pg_trigger t
+            JOIN pg_class c ON c.oid = t.tgrelid
+            WHERE NOT t.tgisinternal
+              AND c.relname IN (
+                  'shipments',
+                  'tracking_events',
+                  'shipment_photos'
+              )
+            ORDER BY c.relname, t.tgname
+        """).fetchall()
+
+        for row in rows:
+            print(row)
+
     conn.commit()
     conn.close()
 
