@@ -200,6 +200,25 @@ def init_db():
         for row in rows:
             print(row)
 
+        print("=== POSTGRES CONSTRAINTS ===")
+        rows = conn.execute("""
+            SELECT
+                c.relname,
+                con.conname,
+                pg_get_constraintdef(con.oid)
+            FROM pg_constraint con
+            JOIN pg_class c ON c.oid = con.conrelid
+            WHERE c.relname IN (
+                'shipments',
+                'tracking_events',
+                'shipment_photos'
+            )
+            ORDER BY c.relname, con.conname
+        """).fetchall()
+
+        for row in rows:
+            print(row)
+
     conn.commit()
     conn.close()
 
