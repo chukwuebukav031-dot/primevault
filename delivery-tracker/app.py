@@ -3,15 +3,16 @@ from database import init_db, get_db
 from werkzeug.security import check_password_hash
 from geopy.geocoders import Nominatim
 import secrets
+import os
 import cloudinary
 import cloudinary.uploader
 
 app = Flask(__name__)
 
 cloudinary.config(
-    cloud_name=__import__("os").getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=__import__("os").getenv("CLOUDINARY_API_KEY"),
-    api_secret=__import__("os").getenv("CLOUDINARY_API_SECRET"),
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
     secure=True
 )
 
@@ -242,7 +243,6 @@ def upload_photos(shipment_id):
 
         conn.commit()
     except Exception:
-        conn.rollback()
         conn.close()
         raise
 
