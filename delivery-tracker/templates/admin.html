@@ -751,6 +751,7 @@ async function sendAdminMessage(event, form) {
                 image.alt = "Message photo";
                 image.className = "admin-message-photo";
                 image.loading = "lazy";
+                image.onclick = () => openMessageImage(image);
                 item.appendChild(image);
             }
 
