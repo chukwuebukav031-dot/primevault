@@ -235,6 +235,9 @@ def upload_photos(shipment_id):
 
             result = cloudinary.uploader.upload(
                 file,
+                cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+                api_key=os.getenv("CLOUDINARY_API_KEY"),
+                api_secret=os.getenv("CLOUDINARY_API_SECRET"),
                 folder=f"primevault_delivery/{shipment['tracking_id']}",
                 resource_type="image"
             )
