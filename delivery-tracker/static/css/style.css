@@ -2598,3 +2598,116 @@ body .receipt-page .receipt .receipt-header * {
     }
 }
 
+
+/* =========================================================
+   ADMIN DARK THEME
+   Admin page only — visual changes, no app/database logic.
+   ========================================================= */
+
+body.admin-dark {
+    background: #080C12;
+    color: #E5E7EB;
+}
+
+body.admin-dark .page {
+    background: #080C12;
+    padding: 25px;
+}
+
+body.admin-dark .container {
+    max-width: 1200px;
+}
+
+body.admin-dark .card {
+    background: #111827;
+    color: #E5E7EB;
+    border: 1px solid #1F2937;
+    box-shadow: 0 10px 35px rgba(0,0,0,.35);
+}
+
+body.admin-dark h1,
+body.admin-dark h2,
+body.admin-dark h3 {
+    color: #F9FAFB;
+}
+
+body.admin-dark .demo {
+    background: #172033;
+    color: #93C5FD;
+    border: 1px solid #263A5A;
+}
+
+body.admin-dark input,
+body.admin-dark select,
+body.admin-dark textarea {
+    background: #0B1220;
+    color: #F9FAFB;
+    border: 1px solid #374151;
+}
+
+body.admin-dark input::placeholder,
+body.admin-dark textarea::placeholder {
+    color: #9CA3AF;
+}
+
+body.admin-dark input:focus,
+body.admin-dark select:focus,
+body.admin-dark textarea:focus {
+    outline: none;
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+
+body.admin-dark label {
+    color: #CBD5E1;
+}
+
+body.admin-dark button {
+    background: #2563EB;
+    color: white;
+    border: 1px solid #2563EB;
+}
+
+body.admin-dark button:hover {
+    background: #1D4ED8;
+}
+
+body.admin-dark hr {
+    border-top: 1px solid #374151;
+}
+
+body.admin-dark .info-box {
+    background: #0F172A;
+    color: #E5E7EB;
+    border: 1px solid #263244;
+    box-shadow: none;
+}
+
+body.admin-dark .info-box strong,
+body.admin-dark .info-box h3 {
+    color: #F9FAFB;
+}
+
+body.admin-dark .tracking-link-box {
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 10px;
+    padding: 14px;
+}
+
+body.admin-dark .tracking-link-box input {
+    background: #080C12;
+}
+
+@media (max-width: 700px) {
+    body.admin-dark .page {
+        padding: 0;
+    }
+
+    body.admin-dark .card {
+        min-height: 100vh;
+        border-radius: 0;
+        padding: 22px 16px;
+    }
+}
+
