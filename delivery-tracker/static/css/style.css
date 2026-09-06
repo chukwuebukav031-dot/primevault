@@ -141,7 +141,7 @@ hr {
 
 .tracking-home {
     min-height: 100vh;
-    background: #eeeaf5;
+    background: #F3F4F6;
     padding-bottom: 40px;
 }
 
@@ -153,7 +153,7 @@ hr {
 }
 
 .tracking-hero h1 {
-    color: #4b2a68;
+    color: #0B1F3A;
     font-size: 38px;
     margin: 15px 0 10px;
 }
@@ -179,7 +179,7 @@ hr {
 .tracking-search input {
     flex: 1;
     padding: 17px;
-    border: 2px solid #d8cee2;
+    border: 2px solid #CBD5E1;
     border-radius: 10px;
     font-size: 16px;
     outline: none;
@@ -187,11 +187,11 @@ hr {
 }
 
 .tracking-search input:focus {
-    border-color: #4b2a68;
+    border-color: #0B1F3A;
 }
 
 .tracking-search button {
-    background: #4b2a68;
+    background: #0B1F3A;
     color: white;
     border: none;
     border-radius: 10px;
@@ -214,7 +214,7 @@ hr {
     padding: 25px 18px;
     border-radius: 14px;
     text-align: center;
-    box-shadow: 0 5px 18px rgba(75,42,104,0.10);
+    box-shadow: 0 5px 18px rgba(11,31,58,0.10);
 }
 
 .feature-icon {
@@ -223,7 +223,7 @@ hr {
 }
 
 .tracking-feature h2 {
-    color: #4b2a68;
+    color: #0B1F3A;
     font-size: 19px;
 }
 
@@ -237,12 +237,12 @@ hr {
     margin: 0 auto 35px;
     padding: 25px;
     background: white;
-    border-left: 6px solid #4b2a68;
+    border-left: 6px solid #0B1F3A;
     border-radius: 12px;
     display: flex;
     align-items: center;
     gap: 20px;
-    box-shadow: 0 5px 18px rgba(75,42,104,0.08);
+    box-shadow: 0 5px 18px rgba(11,31,58,0.08);
 }
 
 .banner-icon {
@@ -251,7 +251,7 @@ hr {
 
 .tracking-info-banner h2 {
     margin: 0 0 6px;
-    color: #4b2a68;
+    color: #0B1F3A;
 }
 
 .tracking-info-banner p {
@@ -272,14 +272,14 @@ hr {
     display: flex;
     align-items: center;
     gap: 18px;
-    box-shadow: 0 5px 18px rgba(75,42,104,0.08);
+    box-shadow: 0 5px 18px rgba(11,31,58,0.08);
 }
 
 .route-icon {
     width: 55px;
     height: 55px;
     border-radius: 50%;
-    background: #eeeaf5;
+    background: #F3F4F6;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -289,7 +289,7 @@ hr {
 
 .route-card strong {
     display: block;
-    color: #4b2a68;
+    color: #0B1F3A;
     font-size: 18px;
     margin-bottom: 5px;
 }
@@ -312,7 +312,7 @@ hr {
 }
 
 .tracking-footer strong {
-    color: #4b2a68;
+    color: #0B1F3A;
     font-size: 18px;
 }
 
@@ -356,12 +356,12 @@ hr {
 
 .tracking-results {
     min-height: 100vh;
-    background: #eeeaf5;
+    background: #F3F4F6;
     padding-bottom: 40px;
 }
 
 .tracking-top {
-    background: #4b2a68;
+    background: #0B1F3A;
     color: white;
     text-align: center;
     padding: 35px 20px 45px;
@@ -404,7 +404,7 @@ hr {
     border-radius: 16px;
     padding: 24px;
     margin-bottom: 20px;
-    box-shadow: 0 6px 20px rgba(75,42,104,.10);
+    box-shadow: 0 6px 20px rgba(11,31,58,.10);
 }
 
 .status-card {
@@ -420,7 +420,7 @@ hr {
 }
 
 .status-card h2 {
-    color: #4b2a68;
+    color: #0B1F3A;
     margin: 7px 0;
 }
 
@@ -430,7 +430,7 @@ hr {
 
 .status-icon {
     font-size: 55px;
-    background: #eeeaf5;
+    background: #F3F4F6;
     border-radius: 50%;
     padding: 15px;
 }
@@ -447,7 +447,7 @@ hr {
 }
 
 .section-title h2 {
-    color: #4b2a68;
+    color: #0B1F3A;
     margin: 0;
     font-size: 21px;
 }
@@ -466,8 +466,8 @@ hr {
     position: absolute;
     inset: 0;
     background-image:
-        linear-gradient(90deg, rgba(75,42,104,.08) 1px, transparent 1px),
-        linear-gradient(rgba(75,42,104,.08) 1px, transparent 1px);
+        linear-gradient(90deg, rgba(11,31,58,.08) 1px, transparent 1px),
+        linear-gradient(rgba(11,31,58,.08) 1px, transparent 1px);
     background-size: 45px 45px;
 }
 
@@ -506,7 +506,7 @@ hr {
     left: 50%;
     top: 45%;
     transform: translate(-50%,-50%);
-    background: #4b2a68;
+    background: #0B1F3A;
     width: 68px;
     height: 68px;
     border-radius: 50%;
@@ -523,7 +523,7 @@ hr {
     bottom: 18px;
     transform: translateX(-50%);
     background: white;
-    color: #4b2a68;
+    color: #0B1F3A;
     padding: 10px 18px;
     border-radius: 25px;
     font-weight: bold;
@@ -536,7 +536,7 @@ hr {
 }
 
 .location-details strong {
-    color: #4b2a68;
+    color: #0B1F3A;
 }
 
 .location-details p {
@@ -556,7 +556,7 @@ hr {
     background: white;
     padding: 20px;
     border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(75,42,104,.08);
+    box-shadow: 0 6px 20px rgba(11,31,58,.08);
 }
 
 .card-icon {
@@ -570,7 +570,7 @@ hr {
 }
 
 .detail-card strong {
-    color: #4b2a68;
+    color: #0B1F3A;
     word-break: break-word;
 }
 
@@ -622,7 +622,7 @@ hr {
 
 .route-place strong {
     display: block;
-    color: #4b2a68;
+    color: #0B1F3A;
     word-break: break-word;
 }
 
@@ -632,7 +632,7 @@ hr {
 
 .route-arrow {
     font-size: 30px;
-    color: #4b2a68;
+    color: #0B1F3A;
 }
 
 /* TIMELINE */
@@ -663,7 +663,7 @@ hr {
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    background: #4b2a68;
+    background: #0B1F3A;
     color: white;
     display: flex;
     align-items: center;
@@ -680,7 +680,7 @@ hr {
 }
 
 .timeline-content h3 {
-    color: #4b2a68;
+    color: #0B1F3A;
     margin: 0 0 8px;
 }
 
@@ -707,7 +707,7 @@ hr {
     min-width: 220px;
     text-align: center;
     text-decoration: none;
-    background: #4b2a68;
+    background: #0B1F3A;
     color: white;
     padding: 15px;
     border-radius: 10px;
@@ -725,7 +725,7 @@ hr {
 }
 
 .simulation-footer strong {
-    color: #4b2a68;
+    color: #0B1F3A;
 }
 
 @media (max-width: 700px) {
