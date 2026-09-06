@@ -353,7 +353,7 @@
         </div>
 
 
-        <div class="history-card message-card">
+        <div class="history-card message-card" id="messages">
     <div class="section-title">
         <span>💬</span>
         <h2>Messages</h2>
@@ -389,7 +389,8 @@
     <form method="POST"
           action="{{ url_for('customer_message', tracking_id=shipment['tracking_id']) }}"
           enctype="multipart/form-data"
-          class="customer-message-form">
+          class="customer-message-form"
+          onsubmit="event.preventDefault(); sendCustomerMessage(event, this); return false;">
 
         <textarea name="message"
                   rows="3"
@@ -400,6 +401,7 @@
                accept="image/jpeg,image/png,image/webp,image/gif">
 
         <button type="submit">Send Message</button>
+        <div class="customer-message-status" aria-live="polite"></div>
     </form>
 </div>
 
@@ -424,6 +426,110 @@
     </div>
 
 </div>
+
+
+<script>
+async function sendCustomerMessage(event, form) {
+    event.preventDefault();
+
+    const status = form.querySelector(".customer-message-status");
+    const button = form.querySelector("button[type='submit']");
+    const messageInput = form.querySelector("textarea[name='message']");
+    const photoInput = form.querySelector("input[name='photo']");
+    const messageList = document.querySelector(".message-list");
+    const messageCard = document.querySelector(".message-card");
+
+    const messageText = messageInput.value.trim();
+    const photo = photoInput.files[0];
+
+    if (!messageText && !photo) {
+        status.textContent = "Write a message or choose a photo.";
+        status.className = "customer-message-status error";
+        return false;
+    }
+
+    const formData = new FormData(form);
+
+    const messageCardTop = messageCard
+        ? messageCard.getBoundingClientRect().top
+        : null;
+
+    button.disabled = true;
+    button.textContent = "Sending...";
+    status.textContent = "";
+
+    try {
+        const response = await fetch(form.action, {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error("Message could not be sent.");
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error("Message could not be sent.");
+        }
+
+        if (messageList) {
+            const item = document.createElement("div");
+            item.className = "tracking-message customer-message";
+
+            const sender = document.createElement("div");
+            sender.className = "message-sender";
+            sender.textContent = "You";
+            item.appendChild(sender);
+
+            if (data.message) {
+                const text = document.createElement("div");
+                text.className = "message-text";
+                text.textContent = data.message;
+                item.appendChild(text);
+            }
+
+            if (data.image_url) {
+                const image = document.createElement("img");
+                image.src = data.image_url;
+                image.alt = "Customer message photo";
+                image.className = "message-photo";
+                image.loading = "lazy";
+                item.appendChild(image);
+            }
+
+            const time = document.createElement("div");
+            time.className = "message-time";
+            time.textContent = "Just now";
+            item.appendChild(time);
+
+            messageList.appendChild(item);
+        }
+
+        if (messageCard && messageCardTop !== null) {
+            const newMessageCardTop = messageCard.getBoundingClientRect().top;
+            window.scrollBy(0, newMessageCardTop - messageCardTop);
+        }
+
+        form.reset();
+        status.textContent = "Message sent successfully.";
+        status.className = "customer-message-status success";
+
+    } catch (error) {
+        status.textContent = "Message could not be sent. Please try again.";
+        status.className = "customer-message-status error";
+    } finally {
+        button.disabled = false;
+        button.textContent = "Send Message";
+    }
+
+    return false;
+}
+</script>
 
 </body>
 </html>

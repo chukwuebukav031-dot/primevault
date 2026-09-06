@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from database import init_db, get_db
 from werkzeug.security import check_password_hash
 from geopy.geocoders import Nominatim
@@ -278,6 +278,13 @@ def send_message(shipment_id):
 
     conn.close()
 
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({
+            "success": True,
+            "message": message,
+            "image_url": image_url
+        })
+
     return redirect(url_for("admin"))
 
 
@@ -533,7 +540,9 @@ def receipt_print_view(tracking_id):
 def track_lookup():
     if request.method == "POST":
         tracking_id = request.form["tracking_id"].strip().upper()
-        return redirect(url_for("shipment", tracking_id=tracking_id))
+        return redirect(
+        url_for("shipment", tracking_id=tracking_id) + "#messages"
+    )
     return render_template("track_lookup.html")
 
 @app.route("/track/<tracking_id>/message", methods=["POST"])
@@ -590,7 +599,14 @@ def customer_message(tracking_id):
 
     conn.close()
 
-    return redirect(url_for("shipment", tracking_id=tracking_id))
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({
+            "success": True,
+            "message": message,
+            "image_url": image_url
+        })
+
+    return redirect(url_for("shipment", tracking_id=tracking_id) + "#messages")
 
 
 @app.route("/track/<tracking_id>")
