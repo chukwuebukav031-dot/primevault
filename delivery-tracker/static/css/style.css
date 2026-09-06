@@ -2711,3 +2711,151 @@ body.admin-dark .tracking-link-box input {
     }
 }
 
+
+/* =========================================================
+   PUBLIC TRACKING DARK THEME
+   Tracking page only — visual changes only.
+   ========================================================= */
+
+body.tracking-dark {
+    background: #080C12;
+    color: #E5E7EB;
+}
+
+body.tracking-dark .tracking-results {
+    background: #080C12;
+}
+
+body.tracking-dark .tracking-top {
+    background: linear-gradient(135deg, #05080D 0%, #111827 100%);
+}
+
+body.tracking-dark .tracking-top .demo {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.16);
+    color: #BFDBFE;
+}
+
+body.tracking-dark .results-container {
+    color: #E5E7EB;
+}
+
+body.tracking-dark .tracking-approval,
+body.tracking-dark .status-card,
+body.tracking-dark .location-card,
+body.tracking-dark .information-card,
+body.tracking-dark .history-card,
+body.tracking-dark .detail-card {
+    background: #111827;
+    color: #E5E7EB;
+    border-color: #263244;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+
+body.tracking-dark .status-card {
+    border-left-color: #16A34A;
+}
+
+body.tracking-dark .small-label,
+body.tracking-dark .detail-card h3,
+body.tracking-dark .information-row strong {
+    color: #94A3B8;
+}
+
+body.tracking-dark .status-card h2,
+body.tracking-dark .section-title h2,
+body.tracking-dark .detail-card strong,
+body.tracking-dark .location-details strong,
+body.tracking-dark .timeline-content h3,
+body.tracking-dark .simulation-footer strong {
+    color: #F9FAFB;
+}
+
+body.tracking-dark .status-card p,
+body.tracking-dark .location-details p,
+body.tracking-dark .information-row span,
+body.tracking-dark .timeline-content p {
+    color: #CBD5E1;
+}
+
+body.tracking-dark .status-icon {
+    background: #172033;
+}
+
+body.tracking-dark .section-title {
+    border-bottom-color: #263244;
+}
+
+body.tracking-dark .location-details {
+    border-top-color: #263244;
+}
+
+body.tracking-dark .detail-card {
+    background: #0F172A;
+}
+
+body.tracking-dark .information-row {
+    border-bottom-color: #263244;
+}
+
+body.tracking-dark .route-place {
+    background: #0F172A;
+    border-color: #263244;
+}
+
+body.tracking-dark .route-display .route-place strong {
+    color: #F9FAFB;
+}
+
+body.tracking-dark .route-display .route-place small {
+    color: #94A3B8;
+}
+
+body.tracking-dark .route-display .route-arrow {
+    color: #60A5FA;
+}
+
+body.tracking-dark .timeline-item:not(:last-child)::before {
+    background: #374151;
+}
+
+body.tracking-dark .timeline-dot {
+    background: #2563EB;
+}
+
+body.tracking-dark .timeline-content {
+    background: #0F172A;
+    border-color: #263244;
+}
+
+body.tracking-dark .tracking-actions a {
+    background: #2563EB;
+    border-color: #2563EB;
+}
+
+body.tracking-dark .tracking-actions a:hover {
+    background: #1D4ED8;
+}
+
+body.tracking-dark .simulation-footer {
+    color: #94A3B8;
+}
+
+body.tracking-dark .history-card img {
+    border-color: #374151;
+}
+
+@media (max-width: 700px) {
+    body.tracking-dark .tracking-top {
+        background: linear-gradient(135deg, #05080D 0%, #111827 100%);
+    }
+
+    body.tracking-dark .tracking-approval,
+    body.tracking-dark .status-card,
+    body.tracking-dark .location-card,
+    body.tracking-dark .information-card,
+    body.tracking-dark .history-card {
+        border-radius: 12px;
+    }
+}
+
