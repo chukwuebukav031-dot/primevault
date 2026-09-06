@@ -2859,3 +2859,167 @@ body.tracking-dark .history-card img {
     }
 }
 
+
+/* =========================================================
+   RECEIPT DARK THEME
+   Visual-only overrides for both receipt versions.
+   ========================================================= */
+
+body:has(.receipt-page) {
+    background: #080C12;
+}
+
+.receipt-page .receipt {
+    background: #111827 !important;
+    color: #E5E7EB !important;
+    border-color: #263244 !important;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30) !important;
+}
+
+.receipt-page .receipt-header {
+    background: linear-gradient(135deg, #05080D 0%, #111827 100%) !important;
+    color: #F9FAFB !important;
+}
+
+.receipt-page .receipt-brand,
+.receipt-page .receipt-title {
+    color: #F9FAFB !important;
+}
+
+.receipt-page .receipt-mark {
+    background: #2563EB !important;
+    color: white !important;
+}
+
+.receipt-page .receipt-panel,
+.receipt-page .receipt-information,
+.receipt-page .receipt-service {
+    background: #0F172A !important;
+    color: #E5E7EB !important;
+    border-color: #263244 !important;
+}
+
+.receipt-page .receipt-panel-title,
+.receipt-page .receipt-service-title {
+    color: #93C5FD !important;
+    border-bottom-color: #263244 !important;
+}
+
+.receipt-page .receipt-detail {
+    border-bottom-color: #263244 !important;
+}
+
+.receipt-page .receipt-detail strong,
+.receipt-page .receipt-detail span {
+    color: #E5E7EB !important;
+}
+
+.receipt-page .receipt-service-grid {
+    color: #E5E7EB !important;
+}
+
+.receipt-page .receipt-bottom {
+    border-top-color: #263244 !important;
+}
+
+.receipt-page .receipt-note {
+    color: #CBD5E1 !important;
+}
+
+.receipt-page .approval-stamp {
+    border-color: #16A34A !important;
+    color: #16A34A !important;
+}
+
+.receipt-page .receipt-demo {
+    background: #172033 !important;
+    color: #BFDBFE !important;
+    border-color: #263A5A !important;
+}
+
+.receipt-page-buttons a,
+.receipt-page-buttons button {
+    background: #2563EB !important;
+    color: white !important;
+    border-color: #2563EB !important;
+}
+
+/* Printable receipt */
+body:has(.receipt#receipt) {
+    background: #080C12;
+}
+
+body:has(.receipt#receipt) .receipt {
+    background: #111827 !important;
+    color: #E5E7EB !important;
+    border-color: #263244 !important;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30) !important;
+}
+
+body:has(.receipt#receipt) .demo {
+    background: #172033 !important;
+    color: #BFDBFE !important;
+    border-color: #263A5A !important;
+}
+
+body:has(.receipt#receipt) .header {
+    background: linear-gradient(135deg, #05080D 0%, #111827 100%) !important;
+    color: #F9FAFB !important;
+}
+
+body:has(.receipt#receipt) .brand,
+body:has(.receipt#receipt) .title {
+    color: #F9FAFB !important;
+}
+
+body:has(.receipt#receipt) .mark {
+    background: #2563EB !important;
+    color: white !important;
+}
+
+body:has(.receipt#receipt) .panel,
+body:has(.receipt#receipt) .summary,
+body:has(.receipt#receipt) .info {
+    background: #0F172A !important;
+    color: #E5E7EB !important;
+    border-color: #263244 !important;
+}
+
+body:has(.receipt#receipt) .panel-title {
+    color: #93C5FD !important;
+    border-bottom-color: #263244 !important;
+}
+
+body:has(.receipt#receipt) .row {
+    border-bottom-color: #263244 !important;
+    color: #E5E7EB !important;
+}
+
+body:has(.receipt#receipt) .row strong,
+body:has(.receipt#receipt) .row span {
+    color: #E5E7EB !important;
+}
+
+body:has(.receipt#receipt) .bottom {
+    border-top-color: #263244 !important;
+}
+
+body:has(.receipt#receipt) .note {
+    color: #CBD5E1 !important;
+}
+
+body:has(.receipt#receipt) .stamp {
+    border-color: #16A34A !important;
+    color: #16A34A !important;
+}
+
+@media print {
+    body:has(.receipt#receipt) {
+        background: white !important;
+    }
+
+    body:has(.receipt#receipt) .receipt {
+        box-shadow: none !important;
+    }
+}
+
