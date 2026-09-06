@@ -9,11 +9,6 @@ import cloudinary.uploader
 
 app = Flask(__name__)
 
-print("CLOUDINARY CONFIG CHECK:", {
-    "cloud_name": bool(os.getenv("CLOUDINARY_CLOUD_NAME")),
-    "api_key": bool(os.getenv("CLOUDINARY_API_KEY")),
-    "api_secret": bool(os.getenv("CLOUDINARY_API_SECRET"))
-})
 
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
