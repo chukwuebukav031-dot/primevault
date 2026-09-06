@@ -3347,3 +3347,20 @@ body:has(.receipt#receipt) .stamp {
         max-height: 88vh;
     }
 }
+
+/* ===== SCROLLABLE MESSAGE HISTORY ===== */
+
+.message-list,
+.admin-message-list {
+    max-height: 350px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 6px;
+}
+
+@media (max-width: 600px) {
+    .message-list,
+    .admin-message-list {
+        max-height: 300px;
+    }
+}
