@@ -735,8 +735,28 @@ document.addEventListener("DOMContentLoaded", async function() {
         const existingSubscription =
             await registration.pushManager.getSubscription();
 
+        async function savePushSubscription(subscription) {
+            const response = await fetch("/push/subscribe", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    role: "customer",
+                    tracking_id: "{{ shipment['tracking_id'] }}",
+                    subscription: subscription.toJSON()
+                })
+            });
+
+            if (!response.ok) {
+                const serverError = await response.text();
+                throw new Error("Server " + response.status + ": " + serverError);
+            }
+        }
+
         if (existingSubscription) {
             toggle.checked = true;
+            await savePushSubscription(existingSubscription);
         }
 
         toggle.addEventListener("change", async function() {
@@ -758,22 +778,7 @@ document.addEventListener("DOMContentLoaded", async function() {
                         applicationServerKey: urlBase64ToUint8Array("{{ config.VAPID_PUBLIC_KEY }}")
                     });
 
-                const response = await fetch("/push/subscribe", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        role: "customer",
-                        tracking_id: "{{ shipment['tracking_id'] }}",
-                        subscription: subscription.toJSON()
-                    })
-                });
-
-                if (!response.ok) {
-                    const serverError = await response.text();
-                    throw new Error("Server " + response.status + ": " + serverError);
-                }
+                await savePushSubscription(subscription);
 
             } catch (error) {
                 console.error("Notification setup failed:", error);
