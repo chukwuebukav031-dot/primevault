@@ -761,6 +761,16 @@ document.addEventListener("DOMContentLoaded", async function() {
 
         toggle.addEventListener("change", async function() {
             if (!this.checked) {
+                try {
+                    const subscription = await registration.pushManager.getSubscription();
+
+                    if (subscription) {
+                        await subscription.unsubscribe();
+                    }
+                } catch (error) {
+                    console.error("Notification unsubscribe failed:", error);
+                }
+
                 return;
             }
 
