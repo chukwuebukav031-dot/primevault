@@ -771,7 +771,8 @@ document.addEventListener("DOMContentLoaded", async function() {
                 });
 
                 if (!response.ok) {
-                    throw new Error("Subscription failed");
+                    const serverError = await response.text();
+                    throw new Error("Server " + response.status + ": " + serverError);
                 }
 
             } catch (error) {
