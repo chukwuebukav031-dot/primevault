@@ -270,6 +270,7 @@ def admin():
     ).fetchall()
 
     messages_by_shipment = {}
+    photos_by_shipment = {}
 
     for shipment in shipments:
         messages_by_shipment[shipment["id"]] = conn.execute(
@@ -282,12 +283,23 @@ def admin():
             (shipment["id"],)
         ).fetchall()
 
+        photos_by_shipment[shipment["id"]] = conn.execute(
+            """
+            SELECT *
+            FROM shipment_photos
+            WHERE shipment_id = ?
+            ORDER BY id DESC
+            """,
+            (shipment["id"],)
+        ).fetchall()
+
     conn.close()
 
     return render_template(
         "admin.html",
         shipments=shipments,
-        messages_by_shipment=messages_by_shipment
+        messages_by_shipment=messages_by_shipment,
+        photos_by_shipment=photos_by_shipment
     )
 
 
@@ -447,6 +459,52 @@ def send_message(shipment_id):
             "image_url": image_url
         })
 
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/photos/<int:shipment_id>/<int:photo_id>/delete", methods=["POST"])
+def delete_photo(shipment_id, photo_id):
+    if not logged_in():
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+    photo = conn.execute(
+        """
+        SELECT *
+        FROM shipment_photos
+        WHERE id = ? AND shipment_id = ?
+        """,
+        (photo_id, shipment_id)
+    ).fetchone()
+
+    if not photo:
+        conn.close()
+        return "Photo not found", 404
+
+    try:
+        public_id = photo["filename"]
+
+        if public_id:
+            cloudinary.uploader.destroy(
+                public_id,
+                cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+                api_key=os.getenv("CLOUDINARY_API_KEY"),
+                api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+                resource_type="image"
+            )
+
+        conn.execute(
+            "DELETE FROM shipment_photos WHERE id = ? AND shipment_id = ?",
+            (photo_id, shipment_id)
+        )
+        conn.commit()
+
+    except Exception:
+        conn.close()
+        raise
+
+    conn.close()
     return redirect(url_for("admin"))
 
 
