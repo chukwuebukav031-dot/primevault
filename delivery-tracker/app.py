@@ -609,6 +609,84 @@ def customer_message(tracking_id):
     return redirect(url_for("shipment", tracking_id=tracking_id) + "#messages")
 
 
+@app.route("/admin/messages/<int:shipment_id>")
+def admin_messages(shipment_id):
+    if not logged_in():
+        return jsonify({"success": False}), 401
+
+    after_id = request.args.get("after_id", 0, type=int)
+
+    conn = get_db()
+
+    messages = conn.execute(
+        """
+        SELECT id, sender, message, image_url, created_at
+        FROM shipment_messages
+        WHERE shipment_id = ? AND id > ?
+        ORDER BY id ASC
+        """,
+        (shipment_id, after_id)
+    ).fetchall()
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "messages": [
+            {
+                "id": row["id"],
+                "sender": row["sender"],
+                "message": row["message"],
+                "image_url": row["image_url"],
+                "created_at": str(row["created_at"])
+            }
+            for row in messages
+        ]
+    })
+
+
+@app.route("/track/<tracking_id>/messages")
+def shipment_messages(tracking_id):
+    after_id = request.args.get("after_id", 0, type=int)
+
+    conn = get_db()
+
+    shipment = conn.execute(
+        "SELECT id FROM shipments WHERE tracking_id = ?",
+        (tracking_id,)
+    ).fetchone()
+
+    if not shipment:
+        conn.close()
+        return jsonify({"success": False}), 404
+
+    messages = conn.execute(
+        """
+        SELECT id, sender, message, image_url, created_at
+        FROM shipment_messages
+        WHERE shipment_id = ? AND id > ?
+        ORDER BY id ASC
+        """,
+        (shipment["id"], after_id)
+    ).fetchall()
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "messages": [
+            {
+                "id": row["id"],
+                "sender": row["sender"],
+                "message": row["message"],
+                "image_url": row["image_url"],
+                "created_at": str(row["created_at"])
+            }
+            for row in messages
+        ]
+    })
+
+
 @app.route("/track/<tracking_id>")
 def shipment(tracking_id):
     conn = get_db()

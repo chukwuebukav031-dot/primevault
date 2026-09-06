@@ -576,7 +576,8 @@ Add Tracking Event
     {% set shipment_messages = messages_by_shipment.get(shipment['id'], []) %}
 
     {% if shipment_messages %}
-        <div class="admin-message-list">
+        <div class="admin-message-list"
+             data-last-message-id="{{ shipment_messages[-1]['id'] if shipment_messages else 0 }}">
             {% for message in shipment_messages %}
                 <div class="admin-message-item {{ 'sent-message' if message['sender'] == 'admin' else 'received-message' }}">
                     <div class="admin-message-sender">
@@ -780,6 +781,89 @@ async function sendAdminMessage(event, form) {
 </script>
 
 <script>
+async function checkForNewAdminMessages() {
+    const lists = document.querySelectorAll(".admin-message-list");
+
+    for (const messageList of lists) {
+        const lastId = parseInt(
+            messageList.dataset.lastMessageId || "0",
+            10
+        );
+
+        const history = messageList.closest(".message-history");
+        if (!history) continue;
+
+        const form = history.nextElementSibling;
+        if (!form) continue;
+
+        const action = form.querySelector("form")?.action;
+        if (!action) continue;
+
+        const shipmentIdMatch = action.match(/\/admin\/message\/(\d+)/);
+        if (!shipmentIdMatch) continue;
+
+        const shipmentId = shipmentIdMatch[1];
+
+        try {
+            const response = await fetch(
+                "/admin/messages/" + shipmentId + "?after_id=" + lastId,
+                {
+                    method: "GET",
+                    cache: "no-store"
+                }
+            );
+
+            if (!response.ok) continue;
+
+            const data = await response.json();
+            if (!data.success || !data.messages.length) continue;
+
+            for (const message of data.messages) {
+                const item = document.createElement("div");
+                item.className = "admin-message-item " +
+                    (message.sender === "admin"
+                        ? "sent-message"
+                        : "received-message");
+
+                const sender = document.createElement("div");
+                sender.className = "admin-message-sender";
+                sender.textContent =
+                    message.sender === "admin" ? "Admin" : "Customer";
+                item.appendChild(sender);
+
+                if (message.message) {
+                    const text = document.createElement("div");
+                    text.className = "admin-message-text";
+                    text.textContent = message.message;
+                    item.appendChild(text);
+                }
+
+                if (message.image_url) {
+                    const image = document.createElement("img");
+                    image.src = message.image_url;
+                    image.alt = "Message photo";
+                    image.className = "admin-message-photo";
+                    image.loading = "lazy";
+                    image.onclick = () => openMessageImage(image);
+                    item.appendChild(image);
+                }
+
+                const time = document.createElement("div");
+                time.className = "admin-message-time";
+                time.textContent = message.created_at;
+                item.appendChild(time);
+
+                messageList.appendChild(item);
+                messageList.dataset.lastMessageId = message.id;
+            }
+        } catch (error) {
+            // Keep checking quietly if the network temporarily fails.
+        }
+    }
+}
+
+setInterval(checkForNewAdminMessages, 1500);
+
 function openMessageImage(image) {
     const overlay = document.createElement("div");
     overlay.className = "message-image-overlay";

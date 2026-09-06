@@ -360,7 +360,8 @@
     </div>
 
     {% if messages %}
-        <div class="message-list">
+        <div class="message-list" id="message-list"
+             data-last-message-id="{{ messages[-1]['id'] if messages else 0 }}">
             {% for message in messages %}
                 <div class="tracking-message {{ 'admin-message' if message['sender'] == 'admin' else 'customer-message' }}">
                     <div class="message-sender">
@@ -533,6 +534,68 @@ async function sendCustomerMessage(event, form) {
 </script>
 
 <script>
+async function checkForNewMessages() {
+    const messageList = document.getElementById("message-list");
+    if (!messageList) return;
+
+    const lastId = parseInt(messageList.dataset.lastMessageId || "0", 10);
+
+    try {
+        const response = await fetch(
+            "{{ url_for('shipment_messages', tracking_id=shipment['tracking_id']) }}?after_id=" + lastId,
+            {
+                method: "GET",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!data.success || !data.messages.length) return;
+
+        for (const message of data.messages) {
+            const item = document.createElement("div");
+            item.className = "tracking-message " +
+                (message.sender === "admin" ? "admin-message" : "customer-message");
+
+            const sender = document.createElement("div");
+            sender.className = "message-sender";
+            sender.textContent = message.sender === "admin" ? "Admin" : "You";
+            item.appendChild(sender);
+
+            if (message.message) {
+                const text = document.createElement("div");
+                text.className = "message-text";
+                text.textContent = message.message;
+                item.appendChild(text);
+            }
+
+            if (message.image_url) {
+                const image = document.createElement("img");
+                image.src = message.image_url;
+                image.alt = "Message photo";
+                image.className = "message-photo";
+                image.loading = "lazy";
+                image.onclick = () => openMessageImage(image);
+                item.appendChild(image);
+            }
+
+            const time = document.createElement("div");
+            time.className = "message-time";
+            time.textContent = message.created_at;
+            item.appendChild(time);
+
+            messageList.appendChild(item);
+            messageList.dataset.lastMessageId = message.id;
+        }
+    } catch (error) {
+        // Keep checking quietly if the network temporarily fails.
+    }
+}
+
+setInterval(checkForNewMessages, 1500);
+
 function openMessageImage(image) {
     const overlay = document.createElement("div");
     overlay.className = "message-image-overlay";
