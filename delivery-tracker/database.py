@@ -168,6 +168,20 @@ def init_db():
     add_column(conn, "shipments", "send_datetime", "TEXT")
     add_column(conn, "shipments", "delivery_datetime", "TEXT")
 
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS shipment_messages (
+            id SERIAL PRIMARY KEY,
+            shipment_id INTEGER NOT NULL,
+            sender TEXT NOT NULL,
+            message TEXT,
+            image_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (shipment_id) REFERENCES shipments(id)
+        )
+        """
+    )
+
     conn.commit()
     conn.close()
 

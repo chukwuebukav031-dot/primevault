@@ -195,9 +195,90 @@ def admin():
         "SELECT * FROM shipments ORDER BY id DESC"
     ).fetchall()
 
+    messages_by_shipment = {}
+
+    for shipment in shipments:
+        messages_by_shipment[shipment["id"]] = conn.execute(
+            """
+            SELECT *
+            FROM shipment_messages
+            WHERE shipment_id = ?
+            ORDER BY id ASC
+            """,
+            (shipment["id"],)
+        ).fetchall()
+
     conn.close()
 
-    return render_template("admin.html", shipments=shipments)
+    return render_template(
+        "admin.html",
+        shipments=shipments,
+        messages_by_shipment=messages_by_shipment
+    )
+
+
+@app.route("/admin/message/<int:shipment_id>", methods=["POST"])
+def send_message(shipment_id):
+    if not logged_in():
+        return redirect(url_for("login"))
+
+    message = request.form.get("message", "").strip()
+    file = request.files.get("photo")
+
+    if not message and (not file or not file.filename):
+        return redirect(url_for("admin"))
+
+    conn = get_db()
+
+    shipment = conn.execute(
+        "SELECT id, tracking_id FROM shipments WHERE id = ?",
+        (shipment_id,)
+    ).fetchone()
+
+    if not shipment:
+        conn.close()
+        return "<h1>Shipment not found</h1>", 404
+
+    image_url = None
+
+    try:
+        if file and file.filename:
+            extension = file.filename.rsplit(".", 1)[-1].lower()
+            allowed = {"jpg", "jpeg", "png", "webp", "gif"}
+
+            if extension in allowed:
+                result = cloudinary.uploader.upload(
+                    file,
+                    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+                    api_key=os.getenv("CLOUDINARY_API_KEY"),
+                    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+                    folder=f"primevault_delivery/{shipment['tracking_id']}/messages",
+                    resource_type="image"
+                )
+                image_url = result.get("secure_url")
+
+        if not message and not image_url:
+            conn.close()
+            return redirect(url_for("admin"))
+
+        conn.execute(
+            """
+            INSERT INTO shipment_messages
+            (shipment_id, sender, message, image_url)
+            VALUES (?, ?, ?, ?)
+            """,
+            (shipment_id, "admin", message, image_url)
+        )
+
+        conn.commit()
+
+    except Exception:
+        conn.close()
+        raise
+
+    conn.close()
+
+    return redirect(url_for("admin"))
 
 
 @app.route("/admin/photos/<int:shipment_id>", methods=["POST"])
@@ -455,6 +536,63 @@ def track_lookup():
         return redirect(url_for("shipment", tracking_id=tracking_id))
     return render_template("track_lookup.html")
 
+@app.route("/track/<tracking_id>/message", methods=["POST"])
+def customer_message(tracking_id):
+    message = request.form.get("message", "").strip()
+    file = request.files.get("photo")
+
+    if not message and (not file or not file.filename):
+        return redirect(url_for("shipment", tracking_id=tracking_id))
+
+    conn = get_db()
+
+    shipment = conn.execute(
+        "SELECT id FROM shipments WHERE tracking_id = ?",
+        (tracking_id,)
+    ).fetchone()
+
+    if not shipment:
+        conn.close()
+        return "<h1>Shipment not found</h1>", 404
+
+    image_url = None
+
+    try:
+        if file and file.filename:
+            extension = file.filename.rsplit(".", 1)[-1].lower()
+            allowed = {"jpg", "jpeg", "png", "webp", "gif"}
+
+            if extension in allowed:
+                result = cloudinary.uploader.upload(
+                    file,
+                    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+                    api_key=os.getenv("CLOUDINARY_API_KEY"),
+                    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+                    folder=f"primevault_delivery/{tracking_id}/messages",
+                    resource_type="image"
+                )
+                image_url = result.get("secure_url")
+
+        conn.execute(
+            """
+            INSERT INTO shipment_messages
+            (shipment_id, sender, message, image_url)
+            VALUES (?, ?, ?, ?)
+            """,
+            (shipment["id"], "customer", message, image_url)
+        )
+
+        conn.commit()
+
+    except Exception:
+        conn.close()
+        raise
+
+    conn.close()
+
+    return redirect(url_for("shipment", tracking_id=tracking_id))
+
+
 @app.route("/track/<tracking_id>")
 def shipment(tracking_id):
     conn = get_db()
@@ -480,6 +618,13 @@ def shipment(tracking_id):
         FROM shipment_photos
         WHERE shipment_id = ?
         ORDER BY id DESC
+    """, (shipment["id"],)).fetchall()
+
+    messages = conn.execute("""
+        SELECT *
+        FROM shipment_messages
+        WHERE shipment_id = ?
+        ORDER BY id ASC
     """, (shipment["id"],)).fetchall()
 
     conn.close()
@@ -541,6 +686,7 @@ def shipment(tracking_id):
         shipment=shipment,
         events=events,
         photos=photos,
+        messages=messages,
         current_location_data=current_location_data,
         map_bbox=map_bbox
     )

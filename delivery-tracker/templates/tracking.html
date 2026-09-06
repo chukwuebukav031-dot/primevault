@@ -353,7 +353,57 @@
         </div>
 
 
-        <div class="tracking-actions">
+        <div class="history-card message-card">
+    <div class="section-title">
+        <span>💬</span>
+        <h2>Messages</h2>
+    </div>
+
+    {% if messages %}
+        <div class="message-list">
+            {% for message in messages %}
+                <div class="tracking-message {{ 'admin-message' if message['sender'] == 'admin' else 'customer-message' }}">
+                    <div class="message-sender">
+                        {{ 'Admin' if message['sender'] == 'admin' else 'You' }}
+                    </div>
+
+                    {% if message['message'] %}
+                        <div class="message-text">{{ message['message'] }}</div>
+                    {% endif %}
+
+                    {% if message['image_url'] %}
+                        <img src="{{ message['image_url'] }}"
+                             alt="Customer message photo"
+                             class="message-photo"
+                             loading="lazy">
+                    {% endif %}
+
+                    <div class="message-time">{{ message['created_at'] }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No messages yet.</p>
+    {% endif %}
+
+    <form method="POST"
+          action="{{ url_for('customer_message', tracking_id=shipment['tracking_id']) }}"
+          enctype="multipart/form-data"
+          class="customer-message-form">
+
+        <textarea name="message"
+                  rows="3"
+                  placeholder="Write a message to Admin..."></textarea>
+
+        <input type="file"
+               name="photo"
+               accept="image/jpeg,image/png,image/webp,image/gif">
+
+        <button type="submit">Send Message</button>
+    </form>
+</div>
+
+<div class="tracking-actions">
 
             <a href="{{ url_for('receipt', tracking_id=shipment['tracking_id']) }}">
                 🧾 View Shipment Receipt

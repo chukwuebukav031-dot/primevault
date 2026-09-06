@@ -567,7 +567,51 @@ Edit Shipment
 
 <a href="{{ url_for('add_event', shipment_id=shipment['id']) }}">
 Add Tracking Event
+
 </a>
+
+<div class="message-history">
+    <h4>Message History</h4>
+
+    {% set shipment_messages = messages_by_shipment.get(shipment['id'], []) %}
+
+    {% if shipment_messages %}
+        <div class="admin-message-list">
+            {% for message in shipment_messages %}
+                <div class="admin-message-item {{ 'sent-message' if message['sender'] == 'admin' else 'received-message' }}">
+                    <div class="admin-message-sender">
+                        {{ 'Admin' if message['sender'] == 'admin' else 'Customer' }}
+                    </div>
+
+                    {% if message['message'] %}
+                        <div class="admin-message-text">{{ message['message'] }}</div>
+                    {% endif %}
+
+                    {% if message['image_url'] %}
+                        <img src="{{ message['image_url'] }}"
+                             alt="Message photo"
+                             class="admin-message-photo"
+                             loading="lazy">
+                    {% endif %}
+
+                    <div class="admin-message-time">{{ message['created_at'] }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="no-messages">No messages yet.</p>
+    {% endif %}
+</div>
+
+<div class="message-box">
+    <h4>Message Customer</h4>
+    <form method="POST" action="{{ url_for('send_message', shipment_id=shipment['id']) }}" enctype="multipart/form-data">
+        <textarea name="message" placeholder="Write a message to the customer..." rows="4"></textarea>
+        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif">
+        <br><br>
+        <button type="submit">Send Message</button>
+    </form>
+</div>
                         <br><br>
                         <form method="POST"
                               action="{{ url_for('upload_photos', shipment_id=shipment['id']) }}"
