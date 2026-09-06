@@ -3364,3 +3364,62 @@ body:has(.receipt#receipt) .stamp {
         max-height: 300px;
     }
 }
+
+/* ===== ADMIN NOTIFICATION SWITCH ===== */
+
+.admin-notification-control {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 1000;
+}
+
+.admin-notification-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #111827;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    user-select: none;
+}
+
+.admin-notification-switch input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-notification-toggle {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    background: #4b5563;
+    transition: background 0.2s ease;
+}
+
+.admin-notification-toggle::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffffff;
+    transition: transform 0.2s ease;
+}
+
+.admin-notification-switch input:checked + .admin-notification-toggle {
+    background: #16a34a;
+}
+
+.admin-notification-switch input:checked + .admin-notification-toggle::after {
+    transform: translateX(18px);
+}

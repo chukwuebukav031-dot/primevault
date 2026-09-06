@@ -5,3 +5,5 @@ Werkzeug
 psycopg[binary]
 
 cloudinary
+
+pywebpush

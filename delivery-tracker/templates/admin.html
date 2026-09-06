@@ -7,6 +7,15 @@
 </head>
 
 <body class="admin-dark">
+
+<div class="admin-notification-control">
+    <label class="admin-notification-switch">
+        <span>🔔</span>
+        <span>Notifications</span>
+        <input type="checkbox" id="admin-notification-toggle">
+        <span class="admin-notification-toggle"></span>
+    </label>
+</div>
 <div class="page">
 <div class="container">
 <div class="card">
@@ -900,5 +909,73 @@ document.addEventListener("DOMContentLoaded", function() {
     document.querySelectorAll(".admin-message-list").forEach(function(list) {
         list.scrollTop = list.scrollHeight;
     });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", async function() {
+    const toggle = document.getElementById("admin-notification-toggle");
+
+    if (!toggle || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+        return;
+    }
+
+    try {
+        const registration = await navigator.serviceWorker.register(
+            "{{ url_for('static', filename='service-worker.js') }}"
+        );
+
+        const existingSubscription =
+            await registration.pushManager.getSubscription();
+
+        if (existingSubscription) {
+            toggle.checked = true;
+        }
+
+        toggle.addEventListener("change", async function() {
+            if (!this.checked) {
+                return;
+            }
+
+            try {
+                const permission = await Notification.requestPermission();
+
+                if (permission !== "granted") {
+                    this.checked = false;
+                    return;
+                }
+
+                const subscription =
+                    await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: "{{ config.VAPID_PUBLIC_KEY }}"
+                    });
+
+                const response = await fetch("/push/subscribe", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        role: "admin",
+                        subscription: subscription.toJSON()
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Subscription failed");
+                }
+
+            } catch (error) {
+                console.error("Admin notification setup failed:", error);
+                this.checked = false;
+                alert("Notifications could not be enabled.");
+            }
+        });
+
+    } catch (error) {
+        console.error("Service worker registration failed:", error);
+        toggle.checked = false;
+    }
 });
 </script>

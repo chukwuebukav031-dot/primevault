@@ -2,3 +2,6 @@ delivery_tracker.db
 *.db
 __pycache__/
 *.pyc
+
+vapid_private.pem
+vapid_public.pem

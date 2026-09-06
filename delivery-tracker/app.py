@@ -2,10 +2,12 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from database import init_db, get_db
 from werkzeug.security import check_password_hash
 from geopy.geocoders import Nominatim
+import json
 import secrets
 import os
 import cloudinary
 import cloudinary.uploader
+from pywebpush import webpush, WebPushException
 
 app = Flask(__name__)
 
@@ -19,7 +21,78 @@ cloudinary.config(
 
 app.secret_key = secrets.token_hex(32)
 
+app.config["VAPID_PUBLIC_KEY"] = os.getenv("VAPID_PUBLIC_KEY", "")
+
+
 init_db()
+
+def send_push_notification(role, tracking_id=None, title="New message", body="You have a new message.", url="/"):
+    conn = get_db()
+
+    if role == "customer":
+        subscriptions = conn.execute(
+            """
+            SELECT *
+            FROM push_subscriptions
+            WHERE role = ? AND tracking_id = ?
+            """,
+            ("customer", tracking_id)
+        ).fetchall()
+    else:
+        subscriptions = conn.execute(
+            """
+            SELECT *
+            FROM push_subscriptions
+            WHERE role = ?
+            """,
+            ("admin",)
+        ).fetchall()
+
+    vapid_private_key = os.getenv("VAPID_PRIVATE_KEY", "")
+    vapid_claims_email = os.getenv("VAPID_CLAIMS_EMAIL", "")
+
+    if not vapid_private_key or not vapid_claims_email:
+        conn.close()
+        return
+
+    for subscription in subscriptions:
+        push_subscription = {
+            "endpoint": subscription["endpoint"],
+            "keys": {
+                "p256dh": subscription["p256dh"],
+                "auth": subscription["auth"]
+            }
+        }
+
+        try:
+            webpush(
+                subscription_info=push_subscription,
+                data=json.dumps({
+                    "title": title,
+                    "body": body,
+                    "url": url
+                }),
+                vapid_private_key=vapid_private_key,
+                vapid_claims={
+                    "sub": vapid_claims_email
+                }
+            )
+        except WebPushException as error:
+            status_code = getattr(
+                getattr(error, "response", None),
+                "status_code",
+                None
+            )
+
+            if status_code in {404, 410}:
+                conn.execute(
+                    "DELETE FROM push_subscriptions WHERE id = ?",
+                    (subscription["id"],)
+                )
+
+    conn.commit()
+    conn.close()
+
 
 def make_tracking_id():
     return "FDX" + secrets.token_hex(5).upper()
@@ -217,6 +290,60 @@ def admin():
     )
 
 
+@app.route("/push/subscribe", methods=["POST"])
+def push_subscribe():
+    data = request.get_json(silent=True) or {}
+
+    role = data.get("role", "").strip()
+    tracking_id = data.get("tracking_id")
+    subscription = data.get("subscription") or {}
+
+    endpoint = subscription.get("endpoint")
+    keys = subscription.get("keys") or {}
+    p256dh = keys.get("p256dh")
+    auth = keys.get("auth")
+
+    if role not in {"customer", "admin"}:
+        return jsonify({"success": False, "error": "Invalid role"}), 400
+
+    if role == "customer" and not tracking_id:
+        return jsonify({"success": False, "error": "Tracking ID required"}), 400
+
+    if role == "admin" and not logged_in():
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not endpoint or not p256dh or not auth:
+        return jsonify({"success": False, "error": "Invalid subscription"}), 400
+
+    conn = get_db()
+
+    try:
+        conn.execute(
+            """
+            INSERT INTO push_subscriptions
+            (role, tracking_id, endpoint, p256dh, auth)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (endpoint)
+            DO UPDATE SET
+                role = EXCLUDED.role,
+                tracking_id = EXCLUDED.tracking_id,
+                p256dh = EXCLUDED.p256dh,
+                auth = EXCLUDED.auth
+            """,
+            (role, tracking_id, endpoint, p256dh, auth)
+        )
+
+        conn.commit()
+
+    except Exception:
+        conn.close()
+        raise
+
+    conn.close()
+
+    return jsonify({"success": True})
+
+
 @app.route("/admin/message/<int:shipment_id>", methods=["POST"])
 def send_message(shipment_id):
     if not logged_in():
@@ -277,6 +404,14 @@ def send_message(shipment_id):
         raise
 
     conn.close()
+
+    send_push_notification(
+        role="customer",
+        tracking_id=shipment["tracking_id"],
+        title="New message",
+        body=message if message else "You received a new shipment message.",
+        url=url_for("shipment", tracking_id=shipment["tracking_id"]) + "#messages"
+    )
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return jsonify({
@@ -598,6 +733,13 @@ def customer_message(tracking_id):
         raise
 
     conn.close()
+
+    send_push_notification(
+        role="admin",
+        title="New customer message",
+        body=message if message else "A customer sent a new shipment message.",
+        url=url_for("admin") + "#messages"
+    )
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return jsonify({
