@@ -276,7 +276,31 @@
         </div>
 
 
-        <div class="history-card">
+
+<div class="history-card">
+    <div class="section-title">
+        <span>📷</span>
+        <h2>Delivery Photos</h2>
+    </div>
+
+    {% if photos %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+        {% for photo in photos %}
+        <div style="border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff;">
+            <img
+                src="https://res.cloudinary.com/kxbhcpzm/image/upload/{{ photo['filename'] }}"
+                alt="Delivery documentation photo"
+                style="width:100%;height:220px;object-fit:cover;border-radius:8px;"
+                loading="lazy">
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No delivery photos available.</p>
+    {% endif %}
+</div>
+
+<div class="history-card">
 
             <div class="section-title">
                 <span>🚚</span>

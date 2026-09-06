@@ -3,8 +3,18 @@ from database import init_db, get_db
 from werkzeug.security import check_password_hash
 from geopy.geocoders import Nominatim
 import secrets
+import cloudinary
+import cloudinary.uploader
 
 app = Flask(__name__)
+
+cloudinary.config(
+    cloud_name=__import__("os").getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=__import__("os").getenv("CLOUDINARY_API_KEY"),
+    api_secret=__import__("os").getenv("CLOUDINARY_API_SECRET"),
+    secure=True
+)
+
 app.secret_key = secrets.token_hex(32)
 
 init_db()
@@ -187,6 +197,57 @@ def admin():
 
     return render_template("admin.html", shipments=shipments)
 
+
+@app.route("/admin/photos/<int:shipment_id>", methods=["POST"])
+def upload_photos(shipment_id):
+    if not logged_in():
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    shipment = conn.execute(
+        "SELECT * FROM shipments WHERE id = ?",
+        (shipment_id,)
+    ).fetchone()
+
+    if not shipment:
+        conn.close()
+        return "Shipment not found", 404
+
+    files = request.files.getlist("photos")
+    allowed = {"jpg", "jpeg", "png", "webp", "gif"}
+    uploaded = 0
+
+    try:
+        for file in files:
+            if not file or not file.filename:
+                continue
+
+            extension = file.filename.rsplit(".", 1)[-1].lower()
+            if extension not in allowed:
+                continue
+
+            result = cloudinary.uploader.upload(
+                file,
+                folder=f"primevault_delivery/{shipment['tracking_id']}",
+                resource_type="image"
+            )
+
+            public_id = result.get("public_id")
+            if public_id:
+                conn.execute(
+                    "INSERT INTO shipment_photos (shipment_id, filename) VALUES (?, ?)",
+                    (shipment_id, public_id)
+                )
+                uploaded += 1
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
+
+    conn.close()
+    return redirect(url_for("admin"))
 
 @app.route("/admin/edit/<int:shipment_id>", methods=["GET", "POST"])
 def edit_shipment(shipment_id):
@@ -410,6 +471,13 @@ def shipment(tracking_id):
         ORDER BY id DESC
     """, (shipment["id"],)).fetchall()
 
+    photos = conn.execute("""
+        SELECT *
+        FROM shipment_photos
+        WHERE shipment_id = ?
+        ORDER BY id DESC
+    """, (shipment["id"],)).fetchall()
+
     conn.close()
 
     current_location_data = geocode_location(
@@ -468,6 +536,7 @@ def shipment(tracking_id):
         "tracking.html",
         shipment=shipment,
         events=events,
+        photos=photos,
         current_location_data=current_location_data,
         map_bbox=map_bbox
     )

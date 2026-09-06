@@ -3,3 +3,5 @@ gunicorn
 geopy
 Werkzeug
 psycopg[binary]
+
+cloudinary
