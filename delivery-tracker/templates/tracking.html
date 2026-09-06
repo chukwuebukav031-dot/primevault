@@ -510,6 +510,9 @@ async function sendCustomerMessage(event, form) {
             item.appendChild(time);
 
             messageList.appendChild(item);
+            if (data.id) {
+                messageList.dataset.lastMessageId = data.id;
+            }
         }
 
         if (messageCard && messageCardTop !== null) {

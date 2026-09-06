@@ -771,6 +771,9 @@ async function sendAdminMessage(event, form) {
             item.appendChild(time);
 
             messageList.appendChild(item);
+            if (data.id) {
+                messageList.dataset.lastMessageId = data.id;
+            }
         }
 
         form.reset();

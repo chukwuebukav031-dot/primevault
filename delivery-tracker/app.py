@@ -412,15 +412,17 @@ def send_message(shipment_id):
             conn.close()
             return redirect(url_for("admin"))
 
-        conn.execute(
+        cursor = conn.execute(
             """
             INSERT INTO shipment_messages
             (shipment_id, sender, message, image_url)
             VALUES (?, ?, ?, ?)
+            RETURNING id
             """,
             (shipment_id, "admin", message, image_url)
         )
 
+        message_id = cursor.fetchone()["id"]
         conn.commit()
 
     except Exception:
@@ -440,6 +442,7 @@ def send_message(shipment_id):
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return jsonify({
             "success": True,
+            "id": message_id,
             "message": message,
             "image_url": image_url
         })
@@ -741,15 +744,17 @@ def customer_message(tracking_id):
                 )
                 image_url = result.get("secure_url")
 
-        conn.execute(
+        cursor = conn.execute(
             """
             INSERT INTO shipment_messages
             (shipment_id, sender, message, image_url)
             VALUES (?, ?, ?, ?)
+            RETURNING id
             """,
             (shipment["id"], "customer", message, image_url)
         )
 
+        message_id = cursor.fetchone()["id"]
         conn.commit()
 
     except Exception:
@@ -768,6 +773,7 @@ def customer_message(tracking_id):
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return jsonify({
             "success": True,
+            "id": message_id,
             "message": message,
             "image_url": image_url
         })
