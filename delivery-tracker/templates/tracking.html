@@ -375,7 +375,8 @@
                         <img src="{{ message['image_url'] }}"
                              alt="Customer message photo"
                              class="message-photo"
-                             loading="lazy">
+                             loading="lazy"
+                             onclick="openMessageImage(this)">
                     {% endif %}
 
                     <div class="message-time">{{ message['created_at'] }}</div>
@@ -531,5 +532,34 @@ async function sendCustomerMessage(event, form) {
 }
 </script>
 
+<script>
+function openMessageImage(image) {
+    const overlay = document.createElement("div");
+    overlay.className = "message-image-overlay";
+
+    const largeImage = document.createElement("img");
+    largeImage.src = image.src;
+    largeImage.alt = image.alt || "Message photo";
+    largeImage.className = "message-image-large";
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "message-image-close";
+    close.textContent = "×";
+    close.setAttribute("aria-label", "Close image");
+
+    close.onclick = () => overlay.remove();
+
+    overlay.onclick = (event) => {
+        if (event.target === overlay) {
+            overlay.remove();
+        }
+    };
+
+    overlay.appendChild(close);
+    overlay.appendChild(largeImage);
+    document.body.appendChild(overlay);
+}
+</script>
 </body>
 </html>

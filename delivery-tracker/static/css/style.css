@@ -3287,3 +3287,63 @@ body:has(.receipt#receipt) .stamp {
         max-width: 92%;
     }
 }
+
+/* ===== MESSAGE IMAGE VIEWER ===== */
+
+.message-image-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.92);
+    cursor: zoom-out;
+}
+
+.message-image-large {
+    display: block;
+    max-width: 95vw;
+    max-height: 90vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 10px;
+    cursor: default;
+}
+
+.message-image-close {
+    position: fixed;
+    top: 18px;
+    right: 20px;
+    z-index: 100000;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    color: #FFFFFF;
+    font-size: 30px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.message-image-close:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.message-image-large:active {
+    transform: scale(0.99);
+}
+
+@media (max-width: 600px) {
+    .message-image-overlay {
+        padding: 12px;
+    }
+
+    .message-image-large {
+        max-width: 98vw;
+        max-height: 88vh;
+    }
+}
