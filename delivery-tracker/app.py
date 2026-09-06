@@ -345,6 +345,29 @@ def push_subscribe():
     return jsonify({"success": True})
 
 
+@app.route("/push/unsubscribe", methods=["POST"])
+def push_unsubscribe():
+    data = request.get_json(silent=True) or {}
+    endpoint = data.get("endpoint")
+
+    if not endpoint:
+        return jsonify({"success": False, "error": "Endpoint required"}), 400
+
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM push_subscriptions WHERE endpoint = ?",
+            (endpoint,)
+        )
+        conn.commit()
+    except Exception:
+        conn.close()
+        raise
+
+    conn.close()
+    return jsonify({"success": True})
+
+
 @app.route("/admin/message/<int:shipment_id>", methods=["POST"])
 def send_message(shipment_id):
     if not logged_in():
