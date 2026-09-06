@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Photos - {{ shipment['tracking_id'] }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        .photo-manager {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 24px;
+        }
+
+        .photo-upload-box {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            padding: 22px;
+            margin: 20px 0;
+        }
+
+        .photo-upload-box input[type="file"] {
+            width: 100%;
+            margin: 12px 0;
+        }
+
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .photo-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 14px;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        .photo-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            display: block;
+            border-radius: 10px;
+        }
+
+        .photo-card form {
+            margin-top: 10px;
+        }
+
+        .delete-photo-button {
+            width: 100%;
+        }
+
+        .back-admin {
+            display: inline-block;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .photo-manager {
+                padding: 15px;
+            }
+
+            .photo-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .photo-card img {
+                height: 130px;
+            }
+        }
+    </style>
+</head>
+
+<body class="admin-dark">
+
+    <div class="admin-container photo-manager">
+
+        <h2>📷 Delivery Photos</h2>
+
+        <p>
+            Shipment:
+            <strong>{{ shipment['tracking_id'] }}</strong>
+        </p>
+
+        <div class="photo-upload-box">
+            <h3>Upload Photos</h3>
+
+            <p>
+                Select one or multiple delivery documentation photos.
+                You can return here and upload more photos whenever needed.
+            </p>
+
+            <form method="POST"
+                  action="{{ url_for('upload_photos', shipment_id=shipment['id']) }}"
+                  enctype="multipart/form-data">
+
+                <input type="file"
+                       name="photos"
+                       accept="image/jpeg,image/png,image/webp,image/gif"
+                       multiple
+                       required>
+
+                <button type="submit">Upload Photos</button>
+            </form>
+        </div>
+
+        <h3>Uploaded Photos</h3>
+
+        {% if photos %}
+
+        <div class="photo-grid">
+
+            {% for photo in photos %}
+
+            <div class="photo-card">
+
+                <img
+                    src="https://res.cloudinary.com/kxbhcpzm/image/upload/{{ photo['filename'] }}"
+                    alt="Delivery documentation photo"
+                    loading="lazy">
+
+                <form method="POST"
+                      action="{{ url_for('delete_photo', shipment_id=shipment['id'], photo_id=photo['id']) }}"
+                      onsubmit="return confirm('Delete this delivery photo?');">
+
+                    <button type="submit" class="delete-photo-button">
+                        Delete Photo
+                    </button>
+
+                </form>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        {% else %}
+
+        <p>No delivery photos uploaded yet.</p>
+
+        {% endif %}
+
+        <a class="back-admin" href="{{ url_for('admin') }}">
+            ← Back to Admin
+        </a>
+
+    </div>
+
+</body>
+</html>

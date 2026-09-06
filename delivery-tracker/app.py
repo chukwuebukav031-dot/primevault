@@ -462,6 +462,41 @@ def send_message(shipment_id):
     return redirect(url_for("admin"))
 
 
+@app.route("/admin/photos/<int:shipment_id>")
+def manage_photos(shipment_id):
+    if not logged_in():
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+    shipment = conn.execute(
+        "SELECT * FROM shipments WHERE id = ?",
+        (shipment_id,)
+    ).fetchone()
+
+    if not shipment:
+        conn.close()
+        return "Shipment not found", 404
+
+    photos = conn.execute(
+        """
+        SELECT *
+        FROM shipment_photos
+        WHERE shipment_id = ?
+        ORDER BY id DESC
+        """,
+        (shipment_id,)
+    ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "admin_photos.html",
+        shipment=shipment,
+        photos=photos
+    )
+
+
 @app.route("/admin/photos/<int:shipment_id>/<int:photo_id>/delete", methods=["POST"])
 def delete_photo(shipment_id, photo_id):
     if not logged_in():
@@ -559,7 +594,7 @@ def upload_photos(shipment_id):
         raise
 
     conn.close()
-    return redirect(url_for("admin"))
+    return redirect(url_for("manage_photos", shipment_id=shipment_id))
 
 @app.route("/admin/edit/<int:shipment_id>", methods=["GET", "POST"])
 def edit_shipment(shipment_id):

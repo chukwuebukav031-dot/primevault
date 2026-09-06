@@ -629,38 +629,10 @@ Add Tracking Event
     </form>
 </div>
                         <br><br>
-                        <form method="POST"
-                              action="{{ url_for('upload_photos', shipment_id=shipment['id']) }}"
-                              enctype="multipart/form-data">
-                            <h4>Delivery Photos</h4>
-                        {% set shipment_photos = photos_by_shipment.get(shipment['id'], []) %}
-                        {% if shipment_photos %}
-                        <div class="admin-delivery-photos">
-                            {% for photo in shipment_photos %}
-                            <div class="admin-delivery-photo">
-                                <img
-                                    src="https://res.cloudinary.com/kxbhcpzm/image/upload/{{ photo['filename'] }}"
-                                    alt="Delivery documentation photo"
-                                    loading="lazy">
-                                <form method="POST"
-                                      action="{{ url_for('delete_photo', shipment_id=shipment['id'], photo_id=photo['id']) }}"
-                                      onsubmit="return confirm('Delete this delivery photo?');">
-                                    <button type="submit" class="delete-photo-button">Delete Photo</button>
-                                </form>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <p class="no-delivery-photos">No delivery photos uploaded.</p>
-                        {% endif %}
-                            <input type="file"
-                                   name="photos"
-                                   accept="image/jpeg,image/png,image/webp,image/gif"
-                                   multiple
-                                   required>
-                            <br><br>
-                            <button type="submit">Upload Photos</button>
-                        </form>
+                        <a href="{{ url_for('manage_photos', shipment_id=shipment['id']) }}"
+                           class="manage-photos-button">
+                            📷 Manage Delivery Photos
+                        </a>
 
 
 </div>
