@@ -777,7 +777,7 @@ document.addEventListener("DOMContentLoaded", async function() {
             } catch (error) {
                 console.error("Notification setup failed:", error);
                 this.checked = false;
-                alert("Notifications could not be enabled.");
+                alert("Notification setup failed: " + (error && error.name ? error.name + " — " + error.message : error));
             }
         });
 
