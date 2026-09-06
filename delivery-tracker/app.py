@@ -78,7 +78,7 @@ def send_push_notification(role, tracking_id=None, title="New message", body="Yo
                 }
             )
         except Exception as error:
-            print(f"Push notification failed: {error}")
+            print(f"PUSH NOTIFICATION FAILED: {type(error).__name__}: {error}")
 
             status_code = getattr(
                 getattr(error, "response", None),
