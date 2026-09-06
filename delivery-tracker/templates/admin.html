@@ -831,6 +831,11 @@ async function checkForNewAdminMessages() {
             if (!data.success || !data.messages.length) continue;
 
             for (const message of data.messages) {
+                if (message.sender === "admin") {
+                    messageList.dataset.lastMessageId = message.id;
+                    continue;
+                }
+
                 const item = document.createElement("div");
                 item.className = "admin-message-item " +
                     (message.sender === "admin"
