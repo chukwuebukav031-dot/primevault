@@ -115,6 +115,7 @@ def admin():
 
         conn = get_db()
 
+        print("ADMIN STEP 1: INSERT SHIPMENT")
         conn.execute("""
             INSERT INTO shipments
             (tracking_id, sender_name, sender_address, sender_phone, sender_country,
@@ -123,7 +124,7 @@ def admin():
              estimated_delivery, send_datetime, delivery_datetime,
              package_description, package_weight, package_count,
              receipt_number, receipt_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         """, (
             tracking_id,
             request.form["sender_name"],
@@ -148,12 +149,16 @@ def admin():
         ))
 
         conn.commit()
+        print("ADMIN STEP 1 OK")
 
+        print("ADMIN STEP 2: GET SHIPMENT ID")
         shipment_id = conn.execute(
             "SELECT id FROM shipments WHERE tracking_id = ?",
             (tracking_id,)
         ).fetchone()["id"]
+        print("ADMIN STEP 2 OK:", shipment_id)
 
+        print("ADMIN STEP 3: INSERT TRACKING EVENT")
         conn.execute("""
             INSERT INTO tracking_events
             (shipment_id, location, status, description)
@@ -166,8 +171,10 @@ def admin():
         ))
 
         conn.commit()
+        print("ADMIN STEP 3 OK")
         conn.close()
 
+        print("ADMIN CREATE COMPLETE:", tracking_id)
         return redirect(url_for("receipt", tracking_id=tracking_id))
 
     conn = get_db()
@@ -341,7 +348,7 @@ def receipt(tracking_id):
     if not shipment["receipt_number"]:
         receipt_number = "RCPT-" + secrets.token_hex(5).upper()
         conn.execute(
-            "UPDATE shipments SET receipt_number = ?, receipt_date = datetime('now') WHERE id = ?",
+            "UPDATE shipments SET receipt_number = ?, receipt_date = CURRENT_TIMESTAMP WHERE id = ?",
             (receipt_number, shipment["id"])
         )
         conn.commit()
