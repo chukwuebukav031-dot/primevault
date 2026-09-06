@@ -821,21 +821,19 @@ document.addEventListener("DOMContentLoaded", async function() {
                     return;
                 }
 
-                const oldSubscription =
+                let subscription =
                     await registration.pushManager.getSubscription();
 
-                if (oldSubscription) {
-                    await oldSubscription.unsubscribe();
+                if (!subscription) {
+                    subscription =
+                        await registration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey:
+                                urlBase64ToUint8Array(
+                                    "{{ config.VAPID_PUBLIC_KEY }}"
+                                )
+                        });
                 }
-
-                const subscription =
-                    await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey:
-                            urlBase64ToUint8Array(
-                                "{{ config.VAPID_PUBLIC_KEY }}"
-                            )
-                    });
 
                 await savePushSubscription(subscription);
                 localStorage.setItem(notificationPreferenceKey, "on");
