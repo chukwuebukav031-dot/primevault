@@ -26,6 +26,10 @@ app.config["VAPID_PUBLIC_KEY"] = os.getenv("VAPID_PUBLIC_KEY", "")
 
 init_db()
 
+@app.route("/service-worker.js")
+def service_worker():
+    return app.send_static_file("service-worker.js")
+
 def send_push_notification(role, tracking_id=None, title="New message", body="You have a new message.", url="/"):
     conn = get_db()
 
