@@ -219,12 +219,15 @@ def init_db():
 
     # Support notification migration.
     try:
+        cur.execute("SAVEPOINT support_notification_migration")
         cur.execute("""
             ALTER TABLE notifications
             ADD COLUMN support_user_id INTEGER
         """)
+        cur.execute("RELEASE SAVEPOINT support_notification_migration")
     except Exception:
-        pass
+        cur.execute("ROLLBACK TO SAVEPOINT support_notification_migration")
+        cur.execute("RELEASE SAVEPOINT support_notification_migration")
 
     admin = cur.execute(
         "SELECT id FROM users WHERE username = ?",
