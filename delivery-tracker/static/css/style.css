@@ -3633,7 +3633,7 @@ body:has(.receipt#receipt) .stamp {
 
 /* Admin Shipment Space: keep message history, hide the separate composer */
 body.admin-dark .message-box {
-    display: none !important;
+    display: block !important;
 }
 
 /* Prevent message UI from creating horizontal page scrolling */

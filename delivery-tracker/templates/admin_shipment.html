@@ -160,7 +160,7 @@
         </div>
 
         <div class="message-box">
-            <h4>Message Customer</h4>
+
 
             <form method="POST"
                   action="{{ url_for('send_message', shipment_id=shipment['id']) }}"
@@ -317,7 +317,7 @@ async function sendShipmentMessage(event, form) {
 
     } finally {
         button.disabled = false;
-        button.textContent = "Send Message";
+        button.textContent = "➤";
     }
 
     return false;
