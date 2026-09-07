@@ -329,7 +329,7 @@
                         </p>
 
                         {% if event["description"] %}
-                        <p>{{ event["description"] }}</p>
+                        <p>{{ event["description"].replace("Shipment created in the tracking simulator.", "Shipment created in TRACK.") }}</p>
                         {% endif %}
 
                         <small>
