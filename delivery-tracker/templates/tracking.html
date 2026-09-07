@@ -64,12 +64,12 @@
 
                 <div class="map-status">
                     <span>●</span>
-                    SIMULATED CURRENT LOCATION
+                    TRACK CURRENT LOCATION
                 </div>
 
                 <iframe
                     class="real-map"
-                    title="Simulated shipment location map"
+                    title="Track shipment location map"
                     src="https://www.openstreetmap.org/export/embed.html?bbox={% if map_bbox %}{{ map_bbox[0] }},{{ map_bbox[1] }},{{ map_bbox[2] }},{{ map_bbox[3] }}{% else %}{{ current_location_data["longitude"] - 0.08 }},{{ current_location_data["latitude"] - 0.05 }},{{ current_location_data["longitude"] + 0.08 }},{{ current_location_data["latitude"] + 0.05 }}{% endif %}&layer=mapnik&marker={{ current_location_data["latitude"] }},{{ current_location_data["longitude"] }}">
                 </iframe>
 
