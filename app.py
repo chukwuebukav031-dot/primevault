@@ -287,6 +287,17 @@ def init_db():
         cur.execute("ROLLBACK TO SAVEPOINT user_currency_migration")
         cur.execute("RELEASE SAVEPOINT user_currency_migration")
 
+    # Add transaction currency support to older databases.
+    try:
+        cur.execute("SAVEPOINT transaction_currency_migration")
+        cur.execute("ALTER TABLE transactions ADD COLUMN currency TEXT DEFAULT 'USD'")
+        cur.execute("ALTER TABLE transactions ADD COLUMN display_amount REAL")
+        cur.execute("UPDATE transactions SET display_amount = amount WHERE display_amount IS NULL")
+        cur.execute("RELEASE SAVEPOINT transaction_currency_migration")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT transaction_currency_migration")
+        cur.execute("RELEASE SAVEPOINT transaction_currency_migration")
+
     # Add account activation support to older databases.
     try:
         cur.execute("SAVEPOINT account_active_migration")
@@ -1607,10 +1618,14 @@ def dashboard():
     currency = requested_currency or user["currency"] or "USD"
 
     currencies = {
-        "USD": {"name": "US Dollar", "symbol": "$", "rate": 1.0},
         "BRL": {"name": "Brazilian Real", "symbol": "R$", "rate": 5.1024},
+        "USD": {"name": "US Dollar", "symbol": "$", "rate": 1.0},
         "EUR": {"name": "Euro", "symbol": "€", "rate": 0.85},
         "MXN": {"name": "Mexican Peso", "symbol": "$", "rate": 18.6},
+        "GBP": {"name": "British Pound", "symbol": "£", "rate": 0.74},
+        "VND": {"name": "Vietnamese Dong", "symbol": "₫", "rate": 25800.0},
+        "AUD": {"name": "Australian Dollar", "symbol": "A$", "rate": 1.53},
+        "CHF": {"name": "Swiss Franc", "symbol": "CHF", "rate": 0.79},
         "EC": {"name": "Ecuador (USD)", "symbol": "$", "rate": 1.0}
     }
 
@@ -1701,7 +1716,9 @@ def dashboard():
             sign = "+"
 
         transactions_html += f"""
-        <div class="transaction">
+        <div class="transaction"
+             onclick="window.location.href='{url_for('receipt', transaction_id=t['transaction_id'])}'"
+             style="cursor:pointer;"> 
             <div class="tx-icon">
                 {"↗" if sign == "-" else "↙"}
             </div>
@@ -1710,7 +1727,7 @@ def dashboard():
                 <span>{t["created_at"]}</span>
             </div>
             <div class="tx-amount">
-                {sign}${t["amount"]:,.2f}
+                {sign}{selected_currency["symbol"]}{t["amount"] * selected_currency["rate"]:,.2f}
             </div>
         </div>
         """
@@ -2096,10 +2113,14 @@ body {
 
         <form method="GET" action="/dashboard" style="margin-top:14px;">
             <select name="currency" onchange="this.form.submit()" style="width:100%;padding:11px;border-radius:10px;background:white;color:#111827;font-weight:700;">
-                <option value="USD" {% if currency == "USD" %}selected{% endif %}>🇺🇸 US Dollar ($)</option>
                 <option value="BRL" {% if currency == "BRL" %}selected{% endif %}>🇧🇷 Brazil Real (R$)</option>
+                <option value="USD" {% if currency == "USD" %}selected{% endif %}>🇺🇸 US Dollar ($)</option>
                 <option value="EUR" {% if currency == "EUR" %}selected{% endif %}>🇪🇺 Euro (€)</option>
                 <option value="MXN" {% if currency == "MXN" %}selected{% endif %}>🇲🇽 Mexico Peso ($)</option>
+                <option value="GBP" {% if currency == "GBP" %}selected{% endif %}>🇬🇧 British Pound (£)</option>
+                <option value="VND" {% if currency == "VND" %}selected{% endif %}>🇻🇳 Vietnamese Dong (₫)</option>
+                <option value="AUD" {% if currency == "AUD" %}selected{% endif %}>🇦🇺 Australian Dollar (A$)</option>
+                <option value="CHF" {% if currency == "CHF" %}selected{% endif %}>🇨🇭 Swiss Franc (CHF)</option>
                 <option value="EC" {% if currency == "EC" %}selected{% endif %}>🇪🇨 Ecuador (USD $)</option>
             </select>
         </form>
@@ -2250,6 +2271,24 @@ def transfer():
         WHERE user_id = ?
     """, (user["id"],)).fetchone()
 
+    currencies = {
+        "BRL": {"name": "Brazilian Real", "symbol": "R$", "rate": 5.1024},
+        "USD": {"name": "US Dollar", "symbol": "$", "rate": 1.0},
+        "EUR": {"name": "Euro", "symbol": "€", "rate": 0.85},
+        "MXN": {"name": "Mexican Peso", "symbol": "$", "rate": 18.6},
+        "GBP": {"name": "British Pound", "symbol": "£", "rate": 0.74},
+        "VND": {"name": "Vietnamese Dong", "symbol": "₫", "rate": 25800.0},
+        "AUD": {"name": "Australian Dollar", "symbol": "A$", "rate": 1.53},
+        "CHF": {"name": "Swiss Franc", "symbol": "CHF", "rate": 0.79},
+        "EC": {"name": "Ecuador (USD)", "symbol": "$", "rate": 1.0}
+    }
+
+    currency = user["currency"] or "USD"
+    if currency not in currencies:
+        currency = "USD"
+
+    selected_currency = currencies[currency]
+
     if request.method == "POST":
 
         transfers_blocked = not account["transfer_enabled"]
@@ -2265,9 +2304,28 @@ def transfer():
 
 
         try:
-            amount = float(request.form.get("amount", "0"))
+            display_amount = float(request.form.get("amount", "0"))
         except (ValueError, TypeError):
-            amount = 0
+            display_amount = 0
+
+        currency = user["currency"] or "USD"
+
+        currency_rates = {
+            "BRL": 5.1024,
+            "USD": 1.0,
+            "EUR": 0.85,
+            "MXN": 18.6,
+            "GBP": 0.74,
+            "VND": 25800.0,
+            "AUD": 1.53,
+            "CHF": 0.79,
+            "EC": 1.0
+        }
+
+        rate = currency_rates.get(currency, 1.0)
+
+        # Database balances remain stored in USD.
+        amount = display_amount / rate
 
         pin = request.form.get("transfer_pin", "").strip()
 
@@ -2388,9 +2446,11 @@ def transfer():
                 amount,
                 description,
                 status,
-                created_at
+                created_at,
+                currency,
+                display_amount
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             transaction_id,
             user["id"],
@@ -2404,7 +2464,9 @@ def transfer():
             amount,
             description,
             "Failed" if transfers_blocked else "Successful",
-            now
+            now,
+            currency,
+            display_amount
         ))
 
         conn.commit()
@@ -2651,7 +2713,7 @@ textarea {
 <div class="balance-card">
     <div class="balance-label">{% if user["language"] == "Portuguese" %}SALDO DISPONÍVEL{% elif user["language"] == "Spanish" %}SALDO DISPONIBLE{% else %}AVAILABLE BALANCE{% endif %}</div>
     <div class="balance">
-        ${{ "{:,.2f}".format(account["balance"]) }}
+        {{ selected_currency["symbol"] }}{{ "{:,.2f}".format(account["balance"] * selected_currency["rate"]) }}
     </div>
 </div>
 
@@ -2765,13 +2827,22 @@ textarea {
 
 <label>{% if user["language"] == "Portuguese" %}Valor{% elif user["language"] == "Spanish" %}Importe{% else %}Amount{% endif %}</label>
 
-<input
-    type="number"
-    name="amount"
-    min="0.01"
-    step="0.01"
-    placeholder="0.00"
-    required>
+<div style="position:relative;">
+    <span style="position:absolute;left:12px;top:50%;
+                 transform:translateY(-50%);
+                 font-weight:800;color:#374151;">
+        {{ selected_currency["symbol"] }}
+    </span>
+
+    <input
+        type="number"
+        name="amount"
+        min="0.01"
+        step="0.01"
+        placeholder="0.00"
+        required
+        style="padding-left:45px;">
+</div>
 
 </div>
 
@@ -2881,7 +2952,7 @@ window.addEventListener("load", function() {
 
 </body>
 </html>
-""", user=user, account=account, transfer_error=transfer_error, mode=mode)
+""", user=user, account=account, transfer_error=transfer_error, mode=mode, selected_currency=selected_currency)
 
 
 @app.route("/receipt/<transaction_id>")
@@ -2903,6 +2974,23 @@ def receipt(transaction_id):
 
     if not tx:
         return redirect(url_for("dashboard"))
+
+    currencies = {
+        "BRL": {"name": "Brazilian Real", "symbol": "R$", "rate": 5.1024},
+        "USD": {"name": "US Dollar", "symbol": "$", "rate": 1.0},
+        "EUR": {"name": "Euro", "symbol": "€", "rate": 0.85},
+        "MXN": {"name": "Mexican Peso", "symbol": "$", "rate": 18.6},
+        "GBP": {"name": "British Pound", "symbol": "£", "rate": 0.74},
+        "VND": {"name": "Vietnamese Dong", "symbol": "₫", "rate": 25800.0},
+        "AUD": {"name": "Australian Dollar", "symbol": "A$", "rate": 1.53},
+        "CHF": {"name": "Swiss Franc", "symbol": "CHF", "rate": 0.79},
+        "EC": {"name": "Ecuador (USD)", "symbol": "$", "rate": 1.0}
+    }
+
+    selected_currency = currencies.get(
+        tx["currency"] or "USD",
+        currencies["USD"]
+    )
 
     return render_template_string("""
 <!doctype html>
@@ -3117,7 +3205,7 @@ body {
     <div class="amount-label">{% if user["language"] == "Portuguese" %}VALOR DA TRANSFERÊNCIA{% elif user["language"] == "Spanish" %}IMPORTE DE LA TRANSFERENCIA{% else %}TRANSFER AMOUNT{% endif %}</div>
 
     <div class="amount-value">
-        ${{ "{:,.2f}".format(tx["amount"]) }}
+        {{ currencies.get(tx["currency"], selected_currency)["symbol"] }}{{ "{:,.2f}".format(tx["display_amount"] if tx["display_amount"] is not none else tx["amount"] * selected_currency["rate"]) }}
     </div>
 
 </div>
@@ -3281,7 +3369,7 @@ async function shareReceipt() {
 
 </body>
 </html>
-""", tx=tx, user=user)
+""", tx=tx, user=user, currencies=currencies, selected_currency=selected_currency)
 
 
 @app.route("/transactions")
@@ -3298,6 +3386,23 @@ def transactions():
         ORDER BY id ASC
     """, (user["id"], user["id"])).fetchall()
     conn.close()
+
+    currencies = {
+        "BRL": {"name": "Brazilian Real", "symbol": "R$", "rate": 5.1024},
+        "USD": {"name": "US Dollar", "symbol": "$", "rate": 1.0},
+        "EUR": {"name": "Euro", "symbol": "€", "rate": 0.85},
+        "MXN": {"name": "Mexican Peso", "symbol": "$", "rate": 18.6},
+        "GBP": {"name": "British Pound", "symbol": "£", "rate": 0.74},
+        "VND": {"name": "Vietnamese Dong", "symbol": "₫", "rate": 25800.0},
+        "AUD": {"name": "Australian Dollar", "symbol": "A$", "rate": 1.53},
+        "CHF": {"name": "Swiss Franc", "symbol": "CHF", "rate": 0.79},
+        "EC": {"name": "Ecuador (USD)", "symbol": "$", "rate": 1.0}
+    }
+
+    selected_currency = currencies.get(
+        user["currency"] or "USD",
+        currencies["USD"]
+    )
 
     language = user["language"]
 
@@ -3318,14 +3423,17 @@ def transactions():
 
     for t in rows:
         items += f"""
-        <div class="card">
-            <b>${t["amount"]:,.2f}</b><br>
-            {t["status"]}<br>
-            <span class="small">{t["created_at"]}</span><br>
-            <a href="{url_for('receipt', transaction_id=t['transaction_id'])}">
-                {receipt_label}
-            </a>
-        </div>
+        <a href="{url_for('receipt', transaction_id=t['transaction_id'])}"
+           style="text-decoration:none;color:inherit;display:block;">
+            <div class="card" style="cursor:pointer;">
+                <b>{selected_currency["symbol"]}{t["amount"] * selected_currency["rate"]:,.2f}</b><br>
+                {t["status"]}<br>
+                <span class="small">{t["created_at"]}</span><br>
+                <span style="color:#2563eb;font-weight:700;">
+                    {receipt_label}
+                </span>
+            </div>
+        </a>
         """
 
     return page(page_title, items or """
@@ -3405,6 +3513,23 @@ def profile():
 
     full_name = f'{user["username"]} {user["surname"]}'
     initial = user["username"][0].upper() if user["username"] else "P"
+
+    currencies = {
+        "BRL": {"name": "Brazilian Real", "symbol": "R$", "rate": 5.1024},
+        "USD": {"name": "US Dollar", "symbol": "$", "rate": 1.0},
+        "EUR": {"name": "Euro", "symbol": "€", "rate": 0.85},
+        "MXN": {"name": "Mexican Peso", "symbol": "$", "rate": 18.6},
+        "GBP": {"name": "British Pound", "symbol": "£", "rate": 0.74},
+        "VND": {"name": "Vietnamese Dong", "symbol": "₫", "rate": 25800.0},
+        "AUD": {"name": "Australian Dollar", "symbol": "A$", "rate": 1.53},
+        "CHF": {"name": "Swiss Franc", "symbol": "CHF", "rate": 0.79},
+        "EC": {"name": "Ecuador (USD)", "symbol": "$", "rate": 1.0}
+    }
+
+    selected_currency = currencies.get(
+        user["currency"] or "USD",
+        currencies["USD"]
+    )
 
     return render_template_string("""
 <!doctype html>
@@ -3722,7 +3847,7 @@ body {
                     <div class="label">{% if user["language"] == "Portuguese" %}Limite da Conta{% elif user["language"] == "Spanish" %}Límite de Cuenta{% else %}Account Limit{% endif %}</div>
                 </div>
                 <div class="value">
-                    ${{ "{:,.2f}".format(account["account_limit"]) }}
+                    {{ selected_currency["symbol"] }}{{ "{:,.2f}".format(account["account_limit"] * selected_currency["rate"]) }}
                 </div>
             </div>
 
@@ -3761,7 +3886,8 @@ body {
         user=user,
         account=account,
         full_name=full_name,
-        initial=initial
+        initial=initial,
+        selected_currency=selected_currency
     )
 
 
