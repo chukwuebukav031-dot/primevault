@@ -3628,3 +3628,76 @@ body:has(.receipt#receipt) .stamp {
         height: 38px;
     }
 }
+
+/* ===== FINAL MOBILE MESSAGE COMPOSER FIX ===== */
+
+/* Admin Shipment Space: keep message history, hide the separate composer */
+body.admin-dark .message-box {
+    display: none !important;
+}
+
+/* Prevent message UI from creating horizontal page scrolling */
+body.admin-dark,
+body.tracking-dark {
+    overflow-x: hidden !important;
+}
+
+body.admin-dark .shipment-messages,
+body.admin-dark .admin-message-list,
+body.tracking-dark .customer-message-form,
+body.tracking-dark .message-composer {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+}
+
+/* Customer composer: compact WhatsApp-style send button */
+body.tracking-dark .customer-message-form .message-send-button {
+    flex: 0 0 40px !important;
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    font-size: 20px !important;
+    line-height: 1 !important;
+}
+
+/* Customer typing area stays flexible */
+body.tracking-dark .customer-message-form .message-composer textarea {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 100px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+}
+
+/* Keep the composer itself inside the phone width */
+body.tracking-dark .customer-message-form .message-composer {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+}
+
+@media (max-width: 600px) {
+    body.tracking-dark .customer-message-form .message-send-button {
+        flex-basis: 38px !important;
+        width: 38px !important;
+        min-width: 38px !important;
+        max-width: 38px !important;
+        height: 38px !important;
+    }
+
+    body.tracking-dark .customer-message-form .message-composer {
+        gap: 5px !important;
+        padding: 6px !important;
+    }
+}
+
+/* ===== END FINAL MOBILE MESSAGE COMPOSER FIX ===== */
