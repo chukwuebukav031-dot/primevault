@@ -992,6 +992,7 @@ def receipt(tracking_id):
 
     return render_template(
         "receipt.html",
+        is_admin=logged_in(),
         shipment=shipment,
         print_mode=request.args.get("print") == "1",
         return_to=request.args.get("return_to"),
@@ -1013,6 +1014,7 @@ def receipt_print_view(tracking_id):
 
     return render_template(
         "print_receipt.html",
+        is_admin=logged_in(),
         shipment=shipment,
         return_to=request.args.get("return_to"),
         shipment_id=request.args.get("shipment_id", type=int)

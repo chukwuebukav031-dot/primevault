@@ -471,7 +471,7 @@ body {
 <div class="buttons">
     <button type="button" onclick="saveReceiptImage()">Save IMG</button>
 
-    {% if return_to == 'shipment' and shipment_id %}
+    {% if is_admin and return_to == 'shipment' and shipment_id %}
     <a href="{{ url_for('admin_shipment', shipment_id=shipment_id) }}">
         Back to Shipment Space
     </a>
