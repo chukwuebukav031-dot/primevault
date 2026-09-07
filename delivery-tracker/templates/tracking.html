@@ -577,6 +577,12 @@ async function checkForNewMessages() {
         if (!data.success || !data.messages.length) return;
 
         for (const message of data.messages) {
+            if (messageList.querySelector(
+                '[data-message-id="' + String(message.id) + '"]'
+            )) {
+                continue;
+            }
+
             const item = document.createElement("div");
             item.className = "tracking-message " +
                 (message.sender === "admin" ? "admin-message" : "customer-message");
