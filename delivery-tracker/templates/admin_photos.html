@@ -149,8 +149,8 @@
 
         {% endif %}
 
-        <a class="back-admin" href="{{ url_for('admin') }}">
-            ← Back to Admin
+        <a class="back-admin" href="{{ url_for('admin_shipment', shipment_id=shipment['id']) }}">
+            ← Back to Shipment Space
         </a>
 
     </div>

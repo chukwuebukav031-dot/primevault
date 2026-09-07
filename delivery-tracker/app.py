@@ -303,6 +303,44 @@ def admin():
     )
 
 
+@app.route("/admin/shipment/<int:shipment_id>")
+def admin_shipment(shipment_id):
+    if not logged_in():
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+    shipment = conn.execute(
+        "SELECT * FROM shipments WHERE id = ?",
+        (shipment_id,)
+    ).fetchone()
+
+    if not shipment:
+        conn.close()
+        return "Shipment not found", 404
+
+    messages = conn.execute(
+        """
+        SELECT *
+        FROM shipment_messages
+        WHERE shipment_id = ?
+        ORDER BY id ASC
+        """,
+        (shipment_id,)
+    ).fetchall()
+
+    message_count = len(messages)
+
+    conn.close()
+
+    return render_template(
+        "admin_shipment.html",
+        shipment=shipment,
+        messages=messages,
+        message_count=message_count
+    )
+
+
 @app.route("/push/subscribe", methods=["POST"])
 def push_subscribe():
     data = request.get_json(silent=True) or {}
@@ -462,6 +500,170 @@ def send_message(shipment_id):
     return redirect(url_for("admin"))
 
 
+@app.route("/admin/message/<int:shipment_id>/<int:message_id>/edit", methods=["POST"])
+def edit_message(shipment_id, message_id):
+    if not logged_in():
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    message = request.form.get("message", "").strip()
+
+    if not message:
+        return jsonify({"success": False, "error": "Message cannot be empty."}), 400
+
+    conn = get_db()
+
+    row = conn.execute(
+        """
+        SELECT id
+        FROM shipment_messages
+        WHERE id = ? AND shipment_id = ? AND sender = 'admin'
+        """,
+        (message_id, shipment_id)
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({"success": False, "error": "Message not found."}), 404
+
+    conn.execute(
+        """
+        UPDATE shipment_messages
+        SET message = ?
+        WHERE id = ? AND shipment_id = ? AND sender = 'admin'
+        """,
+        (message, message_id, shipment_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "id": message_id,
+        "message": message
+    })
+
+
+@app.route("/admin/message/<int:shipment_id>/<int:message_id>/delete", methods=["POST"])
+def delete_message(shipment_id, message_id):
+    if not logged_in():
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    conn = get_db()
+
+    row = conn.execute(
+        """
+        SELECT id, image_url
+        FROM shipment_messages
+        WHERE id = ? AND shipment_id = ? AND sender = 'admin'
+        """,
+        (message_id, shipment_id)
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({"success": False, "error": "Message not found."}), 404
+
+    try:
+        if row["image_url"]:
+            public_id = row["image_url"].split("/upload/")[-1]
+            if "/" in public_id:
+                public_id = public_id.split("/", 1)[1]
+            if "." in public_id:
+                public_id = public_id.rsplit(".", 1)[0]
+
+            cloudinary.uploader.destroy(
+                public_id,
+                cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+                api_key=os.getenv("CLOUDINARY_API_KEY"),
+                api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+                resource_type="image"
+            )
+
+        conn.execute(
+            """
+            DELETE FROM shipment_messages
+            WHERE id = ? AND shipment_id = ? AND sender = 'admin'
+            """,
+            (message_id, shipment_id)
+        )
+
+        conn.commit()
+
+    except Exception:
+        conn.close()
+        raise
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "id": message_id
+    })
+
+
+@app.route("/admin/message/<int:shipment_id>/<int:message_id>/delete-picture", methods=["POST"])
+def delete_message_picture(shipment_id, message_id):
+    if not logged_in():
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    conn = get_db()
+
+    row = conn.execute(
+        """
+        SELECT id, image_url
+        FROM shipment_messages
+        WHERE id = ? AND shipment_id = ? AND sender = 'admin'
+        """,
+        (message_id, shipment_id)
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({"success": False, "error": "Message not found."}), 404
+
+    if not row["image_url"]:
+        conn.close()
+        return jsonify({"success": False, "error": "No picture attached."}), 400
+
+    try:
+        public_id = row["image_url"].split("/upload/")[-1]
+        if "/" in public_id:
+            public_id = public_id.split("/", 1)[1]
+        if "." in public_id:
+            public_id = public_id.rsplit(".", 1)[0]
+
+        cloudinary.uploader.destroy(
+            public_id,
+            cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+            api_key=os.getenv("CLOUDINARY_API_KEY"),
+            api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+            resource_type="image"
+        )
+
+        conn.execute(
+            """
+            UPDATE shipment_messages
+            SET image_url = NULL
+            WHERE id = ? AND shipment_id = ? AND sender = 'admin'
+            """,
+            (message_id, shipment_id)
+        )
+
+        conn.commit()
+
+    except Exception:
+        conn.close()
+        raise
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "id": message_id
+    })
+
+
 @app.route("/admin/photos/<int:shipment_id>")
 def manage_photos(shipment_id):
     if not logged_in():
@@ -540,7 +742,7 @@ def delete_photo(shipment_id, photo_id):
         raise
 
     conn.close()
-    return redirect(url_for("admin"))
+    return redirect(url_for("manage_photos", shipment_id=shipment_id))
 
 
 @app.route("/admin/photos/<int:shipment_id>", methods=["POST"])
@@ -670,11 +872,21 @@ def edit_shipment(shipment_id):
         conn.commit()
         conn.close()
 
+        if request.args.get("return_to") == "shipment":
+            return redirect(url_for(
+                "admin_shipment",
+                shipment_id=shipment_id
+            ))
+
         return redirect(url_for("admin"))
 
     conn.close()
 
-    return render_template("edit.html", shipment=shipment)
+    return render_template(
+        "edit.html",
+        shipment=shipment,
+        return_to=request.args.get("return_to")
+    )
 
 
 @app.route("/admin/event/<int:shipment_id>", methods=["GET", "POST"])
@@ -723,6 +935,12 @@ def add_event(shipment_id):
         conn.commit()
         conn.close()
 
+        if request.args.get("return_to") == "shipment":
+            return redirect(url_for(
+                "admin_shipment",
+                shipment_id=shipment_id
+            ))
+
         return redirect(url_for("admin"))
 
     events = conn.execute("""
@@ -737,7 +955,8 @@ def add_event(shipment_id):
     return render_template(
         "event.html",
         shipment=shipment,
-        events=events
+        events=events,
+        return_to=request.args.get("return_to")
     )
 
 
@@ -770,7 +989,9 @@ def receipt(tracking_id):
     return render_template(
         "receipt.html",
         shipment=shipment,
-        print_mode=request.args.get("print") == "1"
+        print_mode=request.args.get("print") == "1",
+        return_to=request.args.get("return_to"),
+        shipment_id=request.args.get("shipment_id", type=int)
     )
 
 
@@ -788,7 +1009,9 @@ def receipt_print_view(tracking_id):
 
     return render_template(
         "print_receipt.html",
-        shipment=shipment
+        shipment=shipment,
+        return_to=request.args.get("return_to"),
+        shipment_id=request.args.get("shipment_id", type=int)
     )
 
 @app.route("/track", methods=["GET", "POST"])
@@ -872,6 +1095,170 @@ def customer_message(tracking_id):
         })
 
     return redirect(url_for("shipment", tracking_id=tracking_id) + "#messages")
+
+
+@app.route("/track/<tracking_id>/message/<int:message_id>/edit", methods=["POST"])
+def edit_customer_message(tracking_id, message_id):
+    message = request.form.get("message", "").strip()
+
+    if not message:
+        return jsonify({"success": False, "error": "Message cannot be empty."}), 400
+
+    conn = get_db()
+
+    row = conn.execute(
+        """
+        SELECT m.id
+        FROM shipment_messages m
+        JOIN shipments s ON s.id = m.shipment_id
+        WHERE m.id = ?
+          AND s.tracking_id = ?
+          AND m.sender = 'customer'
+        """,
+        (message_id, tracking_id)
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({"success": False, "error": "Message not found."}), 404
+
+    conn.execute(
+        """
+        UPDATE shipment_messages
+        SET message = ?
+        WHERE id = ?
+        """,
+        (message, message_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "id": message_id,
+        "message": message
+    })
+
+
+@app.route("/track/<tracking_id>/message/<int:message_id>/delete", methods=["POST"])
+def delete_customer_message(tracking_id, message_id):
+    conn = get_db()
+
+    row = conn.execute(
+        """
+        SELECT m.id, m.image_url
+        FROM shipment_messages m
+        JOIN shipments s ON s.id = m.shipment_id
+        WHERE m.id = ?
+          AND s.tracking_id = ?
+          AND m.sender = 'customer'
+        """,
+        (message_id, tracking_id)
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({"success": False, "error": "Message not found."}), 404
+
+    try:
+        if row["image_url"]:
+            public_id = row["image_url"].split("/upload/")[-1]
+            if "/" in public_id:
+                public_id = public_id.split("/", 1)[1]
+            if "." in public_id:
+                public_id = public_id.rsplit(".", 1)[0]
+
+            cloudinary.uploader.destroy(
+                public_id,
+                cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+                api_key=os.getenv("CLOUDINARY_API_KEY"),
+                api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+                resource_type="image"
+            )
+
+        conn.execute(
+            """
+            DELETE FROM shipment_messages
+            WHERE id = ?
+            """,
+            (message_id,)
+        )
+
+        conn.commit()
+
+    except Exception:
+        conn.close()
+        raise
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "id": message_id
+    })
+
+
+@app.route("/track/<tracking_id>/message/<int:message_id>/delete-picture", methods=["POST"])
+def delete_customer_message_picture(tracking_id, message_id):
+    conn = get_db()
+
+    row = conn.execute(
+        """
+        SELECT m.id, m.image_url
+        FROM shipment_messages m
+        JOIN shipments s ON s.id = m.shipment_id
+        WHERE m.id = ?
+          AND s.tracking_id = ?
+          AND m.sender = 'customer'
+        """,
+        (message_id, tracking_id)
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({"success": False, "error": "Message not found."}), 404
+
+    if not row["image_url"]:
+        conn.close()
+        return jsonify({"success": False, "error": "No picture attached."}), 400
+
+    try:
+        public_id = row["image_url"].split("/upload/")[-1]
+        if "/" in public_id:
+            public_id = public_id.split("/", 1)[1]
+        if "." in public_id:
+            public_id = public_id.rsplit(".", 1)[0]
+
+        cloudinary.uploader.destroy(
+            public_id,
+            cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+            api_key=os.getenv("CLOUDINARY_API_KEY"),
+            api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+            resource_type="image"
+        )
+
+        conn.execute(
+            """
+            UPDATE shipment_messages
+            SET image_url = NULL
+            WHERE id = ?
+            """,
+            (message_id,)
+        )
+
+        conn.commit()
+
+    except Exception:
+        conn.close()
+        raise
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "id": message_id
+    })
 
 
 @app.route("/admin/messages/<int:shipment_id>")
@@ -1047,7 +1434,9 @@ def shipment(tracking_id):
         photos=photos,
         messages=messages,
         current_location_data=current_location_data,
-        map_bbox=map_bbox
+        map_bbox=map_bbox,
+        return_to=request.args.get("return_to"),
+        shipment_id=request.args.get("shipment_id", type=int)
     )
 
 

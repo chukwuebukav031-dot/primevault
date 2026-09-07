@@ -674,9 +674,9 @@ button {
 
         <a
             class="back"
-            href="{{ url_for('admin') }}"
+            href="{% if return_to == 'shipment' %}{{ url_for('admin_shipment', shipment_id=shipment['id']) }}{% else %}{{ url_for('admin') }}{% endif %}"
         >
-            Cancel / Back to Admin
+            {% if return_to == 'shipment' %}Cancel / Back to Shipment Space{% else %}Cancel / Back to Admin{% endif %}
         </a>
 
     </form>

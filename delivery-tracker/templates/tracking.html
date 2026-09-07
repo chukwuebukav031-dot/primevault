@@ -363,7 +363,9 @@
         <div class="message-list" id="message-list"
              data-last-message-id="{{ messages[-1]['id'] if messages else 0 }}">
             {% for message in messages %}
-                <div class="tracking-message {{ 'admin-message' if message['sender'] == 'admin' else 'customer-message' }}">
+                <div class="tracking-message {{ 'admin-message' if message['sender'] == 'admin' else 'customer-message' }}"
+                     data-message-id="{{ message['id'] }}"
+                     data-message-sender="{{ message['sender'] }}">
                     <div class="message-sender">
                         {{ 'Admin' if message['sender'] == 'admin' else 'You' }}
                     </div>
@@ -409,9 +411,15 @@
 
 <div class="tracking-actions">
 
+            {% if return_to == 'shipment' and shipment_id %}
+            <a href="{{ url_for('receipt', tracking_id=shipment['tracking_id'], return_to='shipment', shipment_id=shipment_id) }}">
+                🧾 View Shipment Receipt
+            </a>
+{% else %}
             <a href="{{ url_for('receipt', tracking_id=shipment['tracking_id']) }}">
                 🧾 View Shipment Receipt
             </a>
+{% endif %}
 
             <a href="{{ url_for('track_lookup') }}">
                 🔎 Track Another Shipment
@@ -482,6 +490,8 @@ async function sendCustomerMessage(event, form) {
         if (messageList) {
             const item = document.createElement("div");
             item.className = "tracking-message customer-message";
+            item.dataset.messageId = data.id;
+            item.dataset.messageSender = "customer";
 
             const sender = document.createElement("div");
             sender.className = "message-sender";
@@ -501,6 +511,7 @@ async function sendCustomerMessage(event, form) {
                 image.alt = "Customer message photo";
                 image.className = "message-photo";
                 image.loading = "lazy";
+                image.onclick = () => openMessageImage(image);
                 item.appendChild(image);
             }
 
@@ -509,7 +520,10 @@ async function sendCustomerMessage(event, form) {
             time.textContent = "Just now";
             item.appendChild(time);
 
+            item.setAttribute("data-message-id", String(data.id));
+            item.setAttribute("data-message-sender", "customer");
             messageList.appendChild(item);
+
             if (data.id) {
                 messageList.dataset.lastMessageId = data.id;
             }
@@ -541,7 +555,12 @@ async function checkForNewMessages() {
     const messageList = document.getElementById("message-list");
     if (!messageList) return;
 
-    const lastId = parseInt(messageList.dataset.lastMessageId || "0", 10);
+    const lastIdRaw = String(
+        messageList.dataset.lastMessageId || "0"
+    ).trim();
+    const lastId = /^\d+$/.test(lastIdRaw)
+        ? parseInt(lastIdRaw, 10)
+        : 0;
 
     try {
         const response = await fetch(
@@ -561,6 +580,8 @@ async function checkForNewMessages() {
             const item = document.createElement("div");
             item.className = "tracking-message " +
                 (message.sender === "admin" ? "admin-message" : "customer-message");
+            item.dataset.messageId = message.id;
+            item.dataset.messageSender = message.sender;
 
             const sender = document.createElement("div");
             sender.className = "message-sender";
@@ -599,33 +620,154 @@ async function checkForNewMessages() {
 
 setInterval(checkForNewMessages, 1500);
 
-function openMessageImage(image) {
-    const overlay = document.createElement("div");
-    overlay.className = "message-image-overlay";
 
-    const largeImage = document.createElement("img");
-    largeImage.src = image.src;
-    largeImage.alt = image.alt || "Message photo";
-    largeImage.className = "message-image-large";
 
-    const close = document.createElement("button");
-    close.type = "button";
-    close.className = "message-image-close";
-    close.textContent = "×";
-    close.setAttribute("aria-label", "Close image");
 
-    close.onclick = () => overlay.remove();
+let customerLongPressTimer = null;
+let customerLongPressText = "";
 
-    overlay.onclick = (event) => {
-        if (event.target === overlay) {
-            overlay.remove();
-        }
+async function copyCustomerExactText(text) {
+    if (!text) return;
+
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (error) {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+    }
+}
+
+function closeCustomerCopyMenu() {
+    const menu = document.querySelector(".customer-copy-menu");
+    if (menu) menu.remove();
+}
+
+function showCustomerCopyMenu(text, x, y) {
+    closeCustomerCopyMenu();
+
+    const menu = document.createElement("button");
+    menu.type = "button";
+    menu.className = "customer-copy-menu";
+    menu.textContent = "Copy";
+
+    Object.assign(menu.style, {
+        position: "fixed",
+        left: Math.max(6, Math.min(x, window.innerWidth - 72)) + "px",
+        top: Math.max(6, Math.min(y, window.innerHeight - 44)) + "px",
+        zIndex: "999999",
+        padding: "7px 11px",
+        width: "auto",
+        minWidth: "0",
+        border: "0",
+        borderRadius: "7px",
+        background: "#2563EB",
+        color: "#fff",
+        fontSize: "13px",
+        fontWeight: "700",
+        lineHeight: "1.2",
+        boxShadow: "0 4px 14px rgba(0,0,0,.35)"
+    });
+
+    menu.onclick = async function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        await copyCustomerExactText(text);
+        closeCustomerCopyMenu();
     };
 
-    overlay.appendChild(close);
-    overlay.appendChild(largeImage);
-    document.body.appendChild(overlay);
+    document.body.appendChild(menu);
 }
+
+function cancelCustomerLongPress() {
+    if (customerLongPressTimer) {
+        clearTimeout(customerLongPressTimer);
+        customerLongPressTimer = null;
+    }
+    customerLongPressText = "";
+}
+
+document.addEventListener("touchstart", function(event) {
+    const message = event.target.closest(".tracking-message");
+
+    if (!message || event.touches.length !== 1) return;
+
+    const textElement = message.querySelector(".message-text");
+    if (!textElement) return;
+
+    const exactText = textElement.textContent.trim();
+    if (!exactText) return;
+
+    cancelCustomerLongPress();
+
+    const touch = event.touches[0];
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+
+    customerLongPressText = exactText;
+
+    customerLongPressTimer = setTimeout(function() {
+        if (!customerLongPressText) return;
+
+        showCustomerCopyMenu(
+            customerLongPressText,
+            startX,
+            startY
+        );
+
+        customerLongPressTimer = null;
+    }, 700);
+}, { passive: true });
+
+document.addEventListener("touchmove", function() {
+    if (customerLongPressTimer) {
+        cancelCustomerLongPress();
+    }
+}, { passive: true });
+
+document.addEventListener("touchend", function() {
+    cancelCustomerLongPress();
+}, { passive: true });
+
+document.addEventListener("touchcancel", function() {
+    cancelCustomerLongPress();
+}, { passive: true });
+
+document.addEventListener("contextmenu", function(event) {
+    const message = event.target.closest(".tracking-message");
+
+    if (!message) return;
+
+    const textElement = message.querySelector(".message-text");
+    if (!textElement) return;
+
+    const exactText = textElement.textContent.trim();
+    if (!exactText) return;
+
+    event.preventDefault();
+
+    showCustomerCopyMenu(
+        exactText,
+        event.clientX,
+        event.clientY
+    );
+});
+
+document.addEventListener("click", function(event) {
+    const menu = document.querySelector(".customer-copy-menu");
+
+    if (menu && !menu.contains(event.target)) {
+        closeCustomerCopyMenu();
+    }
+});
+
 </script>
 </body>
 </html>
@@ -699,6 +841,42 @@ document.addEventListener("DOMContentLoaded", function() {
         right: 10px;
     }
 }
+
+.floating-customer-message-menu {
+    position: fixed;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 160px;
+    max-width: 210px;
+    padding: 6px;
+    background: #111827;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+}
+
+.floating-customer-message-menu button {
+    border: 0;
+    background: transparent;
+    color: #f8fafc;
+    padding: 9px 12px;
+    border-radius: 8px;
+    text-align: left;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.floating-customer-message-menu button:hover {
+    background: #1e293b;
+}
+
+
+.tracking-message {
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+}
 </style>
 
 <div class="notification-control">
@@ -713,16 +891,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
 <script>
-function urlBase64ToUint8Array(base64String) {
-    const padding = "=".repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/-/g, "+")
-        .replace(/_/g, "/");
-
-    const rawData = window.atob(base64);
-    return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
-}
-
 document.addEventListener("DOMContentLoaded", async function() {
     const toggle = document.getElementById("notification-toggle");
 
@@ -738,7 +906,7 @@ document.addEventListener("DOMContentLoaded", async function() {
             "{{ url_for('static', filename='service-worker.js') }}"
         );
 
-        const existingSubscription =
+        let subscription =
             await registration.pushManager.getSubscription();
 
         const savedPreference =
@@ -758,50 +926,50 @@ document.addEventListener("DOMContentLoaded", async function() {
             });
 
             if (!response.ok) {
-                const serverError = await response.text();
                 throw new Error(
-                    "Server " + response.status + ": " + serverError
+                    "Server " + response.status + ": " + await response.text()
                 );
             }
         }
 
-        if (savedPreference === "off") {
-            toggle.checked = false;
+        async function removePushSubscription(subscription) {
+            if (!subscription) return;
 
-            if (existingSubscription) {
-                await existingSubscription.unsubscribe();
+            const response = await fetch("/push/unsubscribe", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    endpoint: subscription.endpoint
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(
+                    "Server " + response.status + ": " + await response.text()
+                );
             }
-        } else if (existingSubscription) {
+        }
+
+        if (savedPreference === "on" && subscription) {
             toggle.checked = true;
-            localStorage.setItem(notificationPreferenceKey, "on");
-            await savePushSubscription(existingSubscription);
+            await savePushSubscription(subscription);
         } else {
             toggle.checked = false;
         }
 
         toggle.addEventListener("change", async function() {
-            if (!this.checked) {
-                localStorage.setItem(notificationPreferenceKey, "off");
+            const checked = this.checked;
+
+            if (!checked) {
+                localStorage.setItem(
+                    notificationPreferenceKey,
+                    "off"
+                );
 
                 try {
-                    const subscription =
-                        await registration.pushManager.getSubscription();
-
-                    if (subscription) {
-                        const endpoint = subscription.endpoint;
-
-                        await subscription.unsubscribe();
-
-                        await fetch("/push/unsubscribe", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({
-                                endpoint: endpoint
-                            })
-                        });
-                    }
+                    await removePushSubscription(subscription);
                 } catch (error) {
                     console.error(
                         "Notification unsubscribe failed:",
@@ -813,16 +981,17 @@ document.addEventListener("DOMContentLoaded", async function() {
             }
 
             try {
-                const permission = await Notification.requestPermission();
+                const permission =
+                    await Notification.requestPermission();
 
                 if (permission !== "granted") {
                     this.checked = false;
-                    localStorage.setItem(notificationPreferenceKey, "off");
+                    localStorage.setItem(
+                        notificationPreferenceKey,
+                        "off"
+                    );
                     return;
                 }
-
-                let subscription =
-                    await registration.pushManager.getSubscription();
 
                 if (!subscription) {
                     subscription =
@@ -836,12 +1005,24 @@ document.addEventListener("DOMContentLoaded", async function() {
                 }
 
                 await savePushSubscription(subscription);
-                localStorage.setItem(notificationPreferenceKey, "on");
+
+                localStorage.setItem(
+                    notificationPreferenceKey,
+                    "on"
+                );
 
             } catch (error) {
-                console.error("Notification setup failed:", error);
+                console.error(
+                    "Notification setup failed:",
+                    error
+                );
+
                 this.checked = false;
-                localStorage.setItem(notificationPreferenceKey, "off");
+
+                localStorage.setItem(
+                    notificationPreferenceKey,
+                    "off"
+                );
 
                 alert(
                     "Notification setup failed: " +
@@ -853,7 +1034,10 @@ document.addEventListener("DOMContentLoaded", async function() {
         });
 
     } catch (error) {
-        console.error("Service worker registration failed:", error);
+        console.error(
+            "Service worker registration failed:",
+            error
+        );
         toggle.checked = false;
     }
 });

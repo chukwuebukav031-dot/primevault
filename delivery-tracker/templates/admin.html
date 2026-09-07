@@ -518,121 +518,27 @@ ADMIN DASHBOARD — SIMULATION
 
 <h3>{{ shipment["tracking_id"] }}</h3>
 
-<div class="tracking-link-box">
-<strong>Tracking Link</strong>
-<input
-    type="text"
-    readonly
-    value="https://primevault-delivery-tracker.onrender.com/track/{{ shipment['tracking_id'] }}"
-    id="tracking-{{ shipment['id'] }}">
-<button
-    type="button"
-    onclick="copyTrackingLink('tracking-{{ shipment['id'] }}')">
-    Copy
-</button>
-</div>
-
 <p>
-<strong>Receiver:</strong>
-{{ shipment["receiver_name"] }}
+    <strong>Receiver:</strong>
+    {{ shipment["receiver_name"] }}
 </p>
 
 <p>
-<strong>Status:</strong>
-{{ shipment["status"] }}
+    <strong>Status:</strong>
+    {{ shipment["status"] }}
 </p>
 
 <p>
-<strong>Current Location:</strong>
-{{ shipment["current_location"] }}
+    <strong>Current Location:</strong>
+    {{ shipment["current_location"] }}
 </p>
 
-<h4>Shipment Actions</h4>
+<h4>Shipment</h4>
 
-<a href="{{ url_for('shipment', tracking_id=shipment['tracking_id']) }}">
-View Tracking
+<a href="{{ url_for('admin_shipment', shipment_id=shipment['id']) }}"
+   class="manage-photos-button">
+    📦 Open Shipment
 </a>
-
-<br><br>
-
-<button type="button"
-        onclick="shareTracking('https://primevault-delivery-tracker.onrender.com/track/{{ shipment['tracking_id'] }}')">
-    Share Tracking Link
-</button>
-
-<br><br>
-
-<a href="{{ url_for('receipt', tracking_id=shipment['tracking_id']) }}">
-View Receipt
-</a>
-
-<br><br>
-
-<a href="{{ url_for('edit_shipment', shipment_id=shipment['id']) }}">
-Edit Shipment
-</a>
-
-<br><br>
-
-<a href="{{ url_for('add_event', shipment_id=shipment['id']) }}">
-Add Tracking Event
-
-</a>
-
-<div class="message-history" id="messages-{{ shipment['id'] }}">
-    <h4>Message History</h4>
-
-    {% set shipment_messages = messages_by_shipment.get(shipment['id'], []) %}
-
-    {% if shipment_messages %}
-        <div class="admin-message-list"
-             data-last-message-id="{{ shipment_messages[-1]['id'] if shipment_messages else 0 }}">
-            {% for message in shipment_messages %}
-                <div class="admin-message-item {{ 'sent-message' if message['sender'] == 'admin' else 'received-message' }}">
-                    <div class="admin-message-sender">
-                        {{ 'Admin' if message['sender'] == 'admin' else 'Customer' }}
-                    </div>
-
-                    {% if message['message'] %}
-                        <div class="admin-message-text">{{ message['message'] }}</div>
-                    {% endif %}
-
-                    {% if message['image_url'] %}
-                        <img src="{{ message['image_url'] }}"
-                             alt="Message photo"
-                             class="admin-message-photo"
-                             loading="lazy"
-                             onclick="openMessageImage(this)">
-                    {% endif %}
-
-                    <div class="admin-message-time">{{ message['created_at'] }}</div>
-                </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <p class="no-messages">No messages yet.</p>
-    {% endif %}
-</div>
-
-<div class="message-box">
-    <h4>Message Customer</h4>
-    <form method="POST"
-      action="{{ url_for('send_message', shipment_id=shipment['id']) }}"
-      enctype="multipart/form-data"
-      class="admin-message-form"
-      onsubmit="sendAdminMessage(event, this)">
-        <textarea name="message" placeholder="Write a message to the customer..." rows="4"></textarea>
-        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif">
-        <br><br>
-        <button type="submit">Send Message</button>
-        <div class="admin-message-status" aria-live="polite"></div>
-    </form>
-</div>
-                        <br><br>
-                        <a href="{{ url_for('manage_photos', shipment_id=shipment['id']) }}"
-                           class="manage-photos-button">
-                            📷 Manage Delivery Photos
-                        </a>
 
 
 </div>

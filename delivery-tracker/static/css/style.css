@@ -3423,3 +3423,99 @@ body:has(.receipt#receipt) .stamp {
 .admin-notification-switch input:checked + .admin-notification-toggle::after {
     transform: translateX(18px);
 }
+
+
+/* ===== CLEAN ADMIN SHIPMENT MESSAGES ===== */
+
+.admin-message-list {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-height: 350px !important;
+    overflow-y: auto !important;
+    gap: 8px !important;
+    padding-right: 6px !important;
+}
+
+.admin-message-item {
+    display: block !important;
+    width: fit-content !important;
+    max-width: 75% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 9px 12px !important;
+    margin: 0 !important;
+    border-radius: 14px !important;
+    overflow-wrap: anywhere !important;
+}
+
+.admin-message-item.sent-message {
+    align-self: flex-end !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    background: #123B63 !important;
+}
+
+.admin-message-item.received-message {
+    align-self: flex-start !important;
+    margin-left: 0 !important;
+    margin-right: auto !important;
+    background: #172033 !important;
+}
+
+.admin-message-sender {
+    margin: 0 0 4px 0 !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: #93C5FD !important;
+}
+
+.admin-message-text {
+    display: block !important;
+    width: auto !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    color: #F9FAFB !important;
+    font-size: 15px !important;
+    line-height: 1.4 !important;
+}
+
+.admin-message-time {
+    display: block !important;
+    margin-top: 4px !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    color: #94A3B8 !important;
+}
+
+.admin-message-photo {
+    display: block !important;
+    width: auto !important;
+    max-width: 280px !important;
+    max-height: 280px !important;
+    height: auto !important;
+    margin-top: 8px !important;
+    border-radius: 10px !important;
+}
+
+.test-copy-message,
+.message-copy-button {
+    display: none !important;
+}
+
+@media (max-width: 600px) {
+    .admin-message-list {
+        max-height: 300px !important;
+    }
+
+    .admin-message-item {
+        max-width: 82% !important;
+    }
+}
+
+/* ===== END CLEAN ADMIN SHIPMENT MESSAGES ===== */

@@ -471,9 +471,15 @@ body {
 <div class="buttons">
     <button type="button" onclick="saveReceiptImage()">Save IMG</button>
 
+    {% if return_to == 'shipment' and shipment_id %}
+    <a href="{{ url_for('admin_shipment', shipment_id=shipment_id) }}">
+        Back to Shipment Space
+    </a>
+{% else %}
     <a href="{{ url_for('shipment', tracking_id=shipment['tracking_id']) }}">
         Back to Tracking
     </a>
+{% endif %}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>

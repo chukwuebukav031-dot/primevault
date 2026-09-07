@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipment - {{ shipment['tracking_id'] }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        .shipment-space {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 24px;
+        }
+
+        .shipment-space-header {
+            margin-bottom: 24px;
+        }
+
+        .shipment-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .shipment-action {
+            display: block;
+            padding: 11px;
+            border-radius: 14px;
+            text-decoration: none;
+            text-align: center;
+            font-weight: 600;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .shipment-action:hover {
+            background: rgba(255,255,255,0.10);
+        }
+
+        .shipment-back {
+            display: inline-block;
+            margin-top: 25px;
+        }
+    </style>
+</head>
+
+<body class="admin-dark">
+
+<div class="admin-container shipment-space">
+
+    <div class="shipment-space-header">
+        <h2>📦 Shipment Space</h2>
+
+        <p>
+            Tracking ID:
+            <strong>{{ shipment['tracking_id'] }}</strong>
+        </p>
+
+        <p>
+            Recipient:
+            <strong>{{ shipment['receiver_name'] }}</strong>
+        </p>
+    </div>
+
+    <div class="tracking-link-box">
+        <strong>Tracking Link</strong>
+
+        <input
+            type="text"
+            readonly
+            value="{{ request.host_url }}track/{{ shipment['tracking_id'] }}"
+            id="tracking-link">
+
+        <button
+            type="button"
+            onclick="copyTrackingLink(document.getElementById('tracking-link').value)">
+            📋 Copy Link
+        </button>
+    </div>
+
+    <div class="shipment-actions-grid">
+
+        <a class="shipment-action"
+           href="{{ url_for('receipt', tracking_id=shipment['tracking_id'], return_to='shipment', shipment_id=shipment['id']) }}">
+            🧾 View Receipt
+        </a>
+
+        <a class="shipment-action"
+           href="{{ url_for('edit_shipment', shipment_id=shipment['id'], return_to='shipment') }}">
+            ✏️ Edit Shipment
+        </a>
+
+        <a class="shipment-action"
+           href="{{ url_for('shipment', tracking_id=shipment['tracking_id'], return_to='shipment', shipment_id=shipment['id']) }}">
+            🔎 View Tracking
+        </a>
+
+        <button type="button"
+                class="shipment-action"
+                onclick="shareTracking('{{ request.host_url }}track/{{ shipment['tracking_id'] }}')">
+            🔗 Share Tracking Link
+        </button>
+
+        <button type="button"
+                class="shipment-action"
+                onclick="copyTrackingLink('{{ request.host_url }}track/{{ shipment['tracking_id'] }}')">
+            📋 Copy Tracking Link
+        </button>
+
+        <a class="shipment-action"
+           href="{{ url_for('add_event', shipment_id=shipment['id'], return_to='shipment') }}">
+            📍 Add Tracking Event
+        </a>
+
+        <a class="shipment-action"
+           href="{{ url_for('manage_photos', shipment_id=shipment['id']) }}">
+            📷 Manage Delivery Photos
+        </a>
+
+    </div>
+
+    <div class="shipment-messages" id="messages">
+        <h3>💬 Messages ({{ message_count }})</h3>
+
+        <div class="admin-message-list">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="admin-message-item {{ 'sent-message' if message['sender'] == 'admin' else 'received-message' }}" data-message-id="{{ message['id'] }}">
+                    <div class="admin-message-sender">
+                        {{ 'Admin' if message['sender'] == 'admin' else 'Customer' }}
+                    </div>
+
+                    {% if message['message'] %}
+                    <div class="admin-message-text">
+                        {{ message['message'] }}
+                    </div>
+                    {% endif %}
+
+                    {% if message['image_url'] %}
+                    <img
+                        src="{{ message['image_url'] }}"
+                        alt="Message photo"
+                        class="admin-message-photo"
+                        loading="lazy"
+                        onclick="openMessageImage(this)">
+                    {% endif %}
+
+                    <div class="admin-message-time">
+                        {{ message['created_at'] }}
+                    </div>
+
+                    
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="no-messages">No messages yet.</p>
+            {% endif %}
+        </div>
+
+        <div class="message-box">
+            <h4>Message Customer</h4>
+
+            <form method="POST"
+                  action="{{ url_for('send_message', shipment_id=shipment['id']) }}"
+                  enctype="multipart/form-data"
+                  class="admin-message-form"
+                  onsubmit="sendShipmentMessage(event, this)">
+
+                <textarea
+                    name="message"
+                    placeholder="Write a message to the customer..."
+                    rows="4"></textarea>
+
+                <input
+                    type="file"
+                    name="photo"
+                    accept="image/jpeg,image/png,image/webp,image/gif">
+
+                <br><br>
+
+                <button type="submit">Send Message</button>
+
+                <div class="admin-message-status" aria-live="polite"></div>
+            </form>
+        </div>
+    </div>
+
+    <a class="shipment-back"
+       href="{{ url_for('admin') }}">
+        ← Back to Admin
+    </a>
+
+</div>
+
+<script>
+async function shareTracking(link) {
+    try {
+        if (navigator.share) {
+            await navigator.share({
+                title: "Shipment Tracking",
+                text: "Track this shipment:",
+                url: link
+            });
+        } else if (navigator.clipboard) {
+            await navigator.clipboard.writeText(link);
+            alert("Tracking link copied.");
+        } else {
+            prompt("Copy this tracking link:", link);
+        }
+    } catch (error) {
+        if (error.name !== "AbortError") {
+            alert("Unable to share the tracking link.");
+        }
+    }
+}
+
+async function copyTrackingLink(link) {
+    try {
+        if (navigator.clipboard) {
+            await navigator.clipboard.writeText(link);
+            alert("Tracking link copied.");
+        } else {
+            prompt("Copy this tracking link:", link);
+        }
+    } catch (error) {
+        alert("Unable to copy the tracking link.");
+    }
+}
+</script>
+
+<script>
+async function sendShipmentMessage(event, form) {
+    event.preventDefault();
+
+    const status = form.querySelector(".admin-message-status");
+    const button = form.querySelector("button[type='submit']");
+    const formData = new FormData(form);
+
+    button.disabled = true;
+    button.textContent = "Sending...";
+    status.textContent = "";
+
+    try {
+        const response = await fetch(form.action, {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error("Message could not be sent.");
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error("Message could not be sent.");
+        }
+
+        const messageList = document.querySelector(".admin-message-list");
+
+        if (messageList) {
+            const item = document.createElement("div");
+            item.className = "admin-message-item sent-message";
+            item.dataset.messageId = data.id;
+
+            const sender = document.createElement("div");
+            sender.className = "admin-message-sender";
+            sender.textContent = "Admin";
+            item.appendChild(sender);
+
+            if (data.message) {
+                const messageText = document.createElement("div");
+                messageText.className = "admin-message-text";
+                messageText.textContent = data.message;
+                item.appendChild(messageText);
+            }
+
+            if (data.image_url) {
+                const image = document.createElement("img");
+                image.src = data.image_url;
+                image.alt = "Message photo";
+                image.className = "admin-message-photo";
+                image.loading = "lazy";
+                image.onclick = () => openMessageImage(image);
+                item.appendChild(image);
+            }
+
+            const time = document.createElement("div");
+            time.className = "admin-message-time";
+            time.textContent = "Just now";
+            item.appendChild(time);
+
+            messageList.appendChild(item);
+
+            if (data.id) {
+                messageList.dataset.lastMessageId = data.id;
+            }
+
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+
+        form.reset();
+
+        status.textContent = "Message sent successfully.";
+        status.className = "admin-message-status success";
+
+    } catch (error) {
+        status.textContent = "Message could not be sent. Please try again.";
+        status.className = "admin-message-status error";
+
+    } finally {
+        button.disabled = false;
+        button.textContent = "Send Message";
+    }
+
+    return false;
+}
+
+</script>
+
+<script>
+async function checkShipmentMessages() {
+    const messageList = document.querySelector(".admin-message-list");
+    if (!messageList) return;
+
+    const shipmentId = "{{ shipment['id'] }}";
+    const lastId = parseInt(
+        messageList.dataset.lastMessageId || "0",
+        10
+    );
+
+    try {
+        const response = await fetch(
+            "/admin/messages/" + shipmentId + "?after_id=" + lastId,
+            {
+                method: "GET",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        if (!data.success || !data.messages.length) return;
+
+        for (const message of data.messages) {
+
+            if (message.sender === "admin") {
+                messageList.dataset.lastMessageId = message.id;
+                continue;
+            }
+
+            const item = document.createElement("div");
+            item.className =
+                "admin-message-item received-message";
+            item.dataset.messageId = message.id;
+
+            const sender = document.createElement("div");
+            sender.className = "admin-message-sender";
+            sender.textContent = "Customer";
+            item.appendChild(sender);
+
+            if (message.message) {
+                const messageText = document.createElement("div");
+                messageText.className = "admin-message-text";
+                messageText.textContent = message.message;
+                item.appendChild(messageText);
+            }
+
+            if (message.image_url) {
+                const image = document.createElement("img");
+                image.src = message.image_url;
+                image.alt = "Message photo";
+                image.className = "admin-message-photo";
+                image.loading = "lazy";
+                image.onclick = () => openMessageImage(image);
+                item.appendChild(image);
+            }
+
+            const time = document.createElement("div");
+            time.className = "admin-message-time";
+            time.textContent = message.created_at;
+            item.appendChild(time);
+
+            messageList.appendChild(item);
+            messageList.dataset.lastMessageId = message.id;
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+
+    } catch (error) {
+        // Keep checking quietly if the network temporarily fails.
+    }
+}
+
+setInterval(checkShipmentMessages, 1500);
+
+
+
+let adminLongPressTimer = null;
+let adminLongPressText = "";
+
+async function copyAdminExactText(text) {
+    if (!text) return;
+
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (error) {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+    }
+}
+
+function closeAdminCopyMenu() {
+    const menu = document.querySelector(".admin-copy-menu");
+    if (menu) menu.remove();
+}
+
+function showAdminCopyMenu(text, x, y) {
+    closeAdminCopyMenu();
+
+    const menu = document.createElement("button");
+    menu.type = "button";
+    menu.className = "admin-copy-menu";
+    menu.textContent = "Copy";
+
+    Object.assign(menu.style, {
+        position: "fixed",
+        left: Math.max(6, Math.min(x, window.innerWidth - 72)) + "px",
+        top: Math.max(6, Math.min(y, window.innerHeight - 44)) + "px",
+        zIndex: "999999",
+        padding: "7px 11px",
+        width: "auto",
+        minWidth: "0",
+        border: "0",
+        borderRadius: "7px",
+        background: "#2563EB",
+        color: "#fff",
+        fontSize: "13px",
+        fontWeight: "700",
+        lineHeight: "1.2",
+        boxShadow: "0 4px 14px rgba(0,0,0,.35)"
+    });
+
+    menu.onclick = async function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        await copyAdminExactText(text);
+        closeAdminCopyMenu();
+    };
+
+    document.body.appendChild(menu);
+}
+
+function cancelAdminLongPress() {
+    if (adminLongPressTimer) {
+        clearTimeout(adminLongPressTimer);
+        adminLongPressTimer = null;
+    }
+    adminLongPressText = "";
+}
+
+document.addEventListener("touchstart", function(event) {
+    const message = event.target.closest(".admin-message-item");
+
+    if (!message || event.touches.length !== 1) return;
+
+    const textElement = message.querySelector(".admin-message-text");
+    if (!textElement) return;
+
+    const exactText = textElement.textContent.trim();
+    if (!exactText) return;
+
+    cancelAdminLongPress();
+
+    const touch = event.touches[0];
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+
+    adminLongPressText = exactText;
+
+    adminLongPressTimer = setTimeout(function() {
+        if (!adminLongPressText) return;
+
+        showAdminCopyMenu(
+            adminLongPressText,
+            startX,
+            startY
+        );
+
+        adminLongPressTimer = null;
+    }, 700);
+}, { passive: true });
+
+document.addEventListener("touchmove", function() {
+    if (adminLongPressTimer) {
+        cancelAdminLongPress();
+    }
+}, { passive: true });
+
+document.addEventListener("touchend", function() {
+    cancelAdminLongPress();
+}, { passive: true });
+
+document.addEventListener("touchcancel", function() {
+    cancelAdminLongPress();
+}, { passive: true });
+
+document.addEventListener("contextmenu", function(event) {
+    const message = event.target.closest(".admin-message-item");
+
+    if (!message) return;
+
+    const textElement = message.querySelector(".admin-message-text");
+    if (!textElement) return;
+
+    const exactText = textElement.textContent.trim();
+    if (!exactText) return;
+
+    event.preventDefault();
+
+    showAdminCopyMenu(
+        exactText,
+        event.clientX,
+        event.clientY
+    );
+});
+
+document.addEventListener("click", function(event) {
+    const menu = document.querySelector(".admin-copy-menu");
+
+    if (menu && !menu.contains(event.target)) {
+        closeAdminCopyMenu();
+    }
+});
+
+</script>
+
+</body>
+</html>
