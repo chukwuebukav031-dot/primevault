@@ -168,21 +168,23 @@
                   class="admin-message-form"
                   onsubmit="sendShipmentMessage(event, this)">
 
-                <textarea
-                    name="message"
-                    placeholder="Write a message to the customer..."
-                    rows="4"></textarea>
+                <div class="message-composer">
+                <label class="message-photo-button" title="Send photo">
+                    📷
+                    <input type="file"
+                           name="photo"
+                           accept="image/jpeg,image/png,image/webp,image/gif">
+                </label>
 
-                <input
-                    type="file"
-                    name="photo"
-                    accept="image/jpeg,image/png,image/webp,image/gif">
+                <textarea name="message"
+                          rows="1"
+                          placeholder="Type a message..."></textarea>
 
-                <br><br>
-
-                <button type="submit">Send Message</button>
-
-                <div class="admin-message-status" aria-live="polite"></div>
+                <button type="submit"
+                        class="message-send-button"
+                        aria-label="Send message">➤</button>
+            </div>
+            <div class="admin-message-status" aria-live="polite"></div>
             </form>
         </div>
     </div>

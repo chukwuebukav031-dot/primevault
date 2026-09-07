@@ -396,15 +396,22 @@
           class="customer-message-form"
           onsubmit="event.preventDefault(); sendCustomerMessage(event, this); return false;">
 
-        <textarea name="message"
-                  rows="3"
-                  placeholder="Write a message to Admin..."></textarea>
+        <div class="message-composer">
+            <label class="message-photo-button" title="Send photo">
+                📷
+                <input type="file"
+                       name="photo"
+                       accept="image/jpeg,image/png,image/webp,image/gif">
+            </label>
 
-        <input type="file"
-               name="photo"
-               accept="image/jpeg,image/png,image/webp,image/gif">
+            <textarea name="message"
+                      rows="1"
+                      placeholder="Type a message..."></textarea>
 
-        <button type="submit">Send Message</button>
+            <button type="submit"
+                    class="message-send-button"
+                    aria-label="Send message">➤</button>
+        </div>
         <div class="customer-message-status" aria-live="polite"></div>
     </form>
 </div>
