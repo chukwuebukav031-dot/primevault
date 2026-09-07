@@ -217,6 +217,15 @@ def init_db():
         )
     """)
 
+    # Support notification migration.
+    try:
+        cur.execute("""
+            ALTER TABLE notifications
+            ADD COLUMN support_user_id INTEGER
+        """)
+    except Exception:
+        pass
+
     admin = cur.execute(
         "SELECT id FROM users WHERE username = ?",
         ("admin",)
@@ -492,7 +501,12 @@ def page(title, body):
 <head>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>{{ title }} - PrimeVault</title>
-    <style>
+    
+
+
+
+
+<style>
         * { box-sizing: border-box; }
         body {
             margin: 0;
@@ -634,6 +648,328 @@ def page(title, body):
 </div>
 
 <script>
+/* PrimeVault open support chat at newest message */
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".primevault-chat-window").forEach(function (chat) {
+        chat.scrollTop = chat.scrollHeight;
+    });
+});
+
+/* PrimeVault custom WhatsApp-style long-press copy/delete */
+document.addEventListener("DOMContentLoaded", function () {
+    let pressTimer = null;
+    let activeCopyButton = null;
+    let longPressTriggered = false;
+
+    function removeCopyButton() {
+        if (activeCopyButton) {
+            activeCopyButton.remove();
+            activeCopyButton = null;
+        }
+    }
+
+    window.openPrimeVaultPhoto = function (src) {
+        if (longPressTriggered) {
+            longPressTriggered = false;
+            return;
+        }
+
+        const overlay = document.createElement("div");
+
+        overlay.style.position = "fixed";
+        overlay.style.inset = "0";
+        overlay.style.zIndex = "200000";
+        overlay.style.background = "rgba(0,0,0,.92)";
+        overlay.style.display = "flex";
+        overlay.style.alignItems = "center";
+        overlay.style.justifyContent = "center";
+        overlay.style.padding = "20px";
+        overlay.style.boxSizing = "border-box";
+
+        const photo = document.createElement("img");
+        photo.src = src;
+        photo.style.maxWidth = "100%";
+        photo.style.maxHeight = "100%";
+        photo.style.width = "auto";
+        photo.style.height = "auto";
+        photo.style.objectFit = "contain";
+        photo.style.borderRadius = "8px";
+        photo.style.userSelect = "none";
+        photo.style.webkitUserSelect = "none";
+        photo.style.webkitTouchCallout = "none";
+
+        const close = document.createElement("button");
+        close.type = "button";
+        close.textContent = "✕";
+        close.style.position = "absolute";
+        close.style.top = "15px";
+        close.style.right = "15px";
+        close.style.width = "42px";
+        close.style.height = "42px";
+        close.style.border = "0";
+        close.style.borderRadius = "50%";
+        close.style.background = "rgba(255,255,255,.9)";
+        close.style.color = "#111827";
+        close.style.fontSize = "22px";
+        close.style.fontWeight = "800";
+
+        close.addEventListener("click", function (e) {
+            e.stopPropagation();
+            overlay.remove();
+        });
+
+        overlay.addEventListener("click", function (e) {
+            if (e.target === overlay) {
+                overlay.remove();
+            }
+        });
+
+        overlay.appendChild(photo);
+        overlay.appendChild(close);
+        document.body.appendChild(overlay);
+    };
+
+    function copyText(text) {
+        function done() {
+            removeCopyButton();
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+                .then(done)
+                .catch(function () {
+                    fallbackCopy(text, done);
+                });
+        } else {
+            fallbackCopy(text, done);
+        }
+    }
+
+    function fallbackCopy(text, done) {
+        const area = document.createElement("textarea");
+
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.left = "-9999px";
+        area.style.top = "0";
+        area.style.opacity = "0";
+
+        document.body.appendChild(area);
+        area.focus();
+        area.select();
+
+        try {
+            document.execCommand("copy");
+        } catch (_) {}
+
+        area.remove();
+        done();
+    }
+
+    function showCopyButton(msg) {
+        removeCopyButton();
+
+        if (msg.dataset.isDeleted === "1") {
+            return;
+        }
+
+        const hasPhoto = msg.dataset.hasPhoto === "1";
+        const canDelete = msg.dataset.canDelete === "1";
+
+        /*
+         * Text:
+         *   Own message  -> Copy + Delete
+         *   Other side   -> Copy only
+         *
+         * Photo:
+         *   Own photo    -> Delete only
+         *   Other side   -> no menu
+         */
+
+        if (hasPhoto && !canDelete) {
+            return;
+        }
+
+        const menu = document.createElement("div");
+
+        menu.className = "primevault-copy-button";
+
+        menu.style.cssText =
+            "position:fixed;" +
+            "z-index:100000;" +
+            "display:flex;" +
+            "align-items:center;" +
+            "background:#111827;" +
+            "color:white;" +
+            "border-radius:11px;" +
+            "box-shadow:0 3px 10px rgba(0,0,0,.25);" +
+            "overflow:hidden;" +
+            "font-size:12px;" +
+            "font-weight:700;";
+
+        let copyButton = null;
+        let divider = null;
+        let deleteButton = null;
+
+        if (!hasPhoto) {
+            copyButton = document.createElement("button");
+            copyButton.type = "button";
+            copyButton.innerHTML =
+                '<span style="font-size:16px;">📋</span> Copy';
+
+            copyButton.style.cssText =
+                "border:0;" +
+                "background:transparent;" +
+                "color:white;" +
+                "padding:8px 12px;" +
+                "font-size:12px;" +
+                "font-weight:700;" +
+                "cursor:pointer;";
+
+            copyButton.addEventListener("pointerdown", function (e) {
+                e.stopPropagation();
+            });
+
+            copyButton.addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                copyText(msg.dataset.copyText || "");
+            });
+        }
+
+        if (canDelete) {
+            if (copyButton) {
+                divider = document.createElement("span");
+                divider.textContent = "|";
+                divider.style.cssText =
+                    "color:#9ca3af;font-size:13px;";
+            }
+
+            deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.innerHTML =
+                '<span style="font-size:16px;">🗑</span> Delete';
+
+            deleteButton.style.cssText =
+                "border:0;" +
+                "background:transparent;" +
+                "color:white;" +
+                "padding:8px 12px;" +
+                "font-size:12px;" +
+                "font-weight:700;" +
+                "cursor:pointer;";
+
+            deleteButton.addEventListener("pointerdown", function (e) {
+                e.stopPropagation();
+            });
+
+            deleteButton.addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const messageId = msg.dataset.messageId;
+
+                if (!messageId) {
+                    removeCopyButton();
+                    return;
+                }
+
+                if (!confirm("Delete this message for everyone?")) {
+                    return;
+                }
+
+                const form = document.createElement("form");
+                form.method = "POST";
+                form.action = "/support/delete/" + messageId;
+                form.style.display = "none";
+
+                document.body.appendChild(form);
+                form.submit();
+            });
+        }
+
+        if (copyButton) {
+            menu.appendChild(copyButton);
+        }
+
+        if (divider) {
+            menu.appendChild(divider);
+        }
+
+        if (deleteButton) {
+            menu.appendChild(deleteButton);
+        }
+
+        if (!menu.children.length) {
+            return;
+        }
+
+        document.body.appendChild(menu);
+
+        const rect = msg.getBoundingClientRect();
+
+        let left = rect.left;
+
+        if (msg.dataset.sender === "user") {
+            left = rect.right - menu.offsetWidth;
+        }
+
+        left = Math.max(
+            6,
+            Math.min(
+                window.innerWidth - menu.offsetWidth - 6,
+                left
+            )
+        );
+
+        let top = rect.top - menu.offsetHeight - 6;
+
+        if (top < 6) {
+            top = rect.bottom + 6;
+        }
+
+        menu.style.left = left + "px";
+        menu.style.top = top + "px";
+
+        activeCopyButton = menu;
+    }
+
+    document.addEventListener("pointerdown", function (e) {
+        if (e.target.closest(".primevault-copy-button")) {
+            return;
+        }
+
+        const msg = e.target.closest(".primevault-message-target");
+
+        if (!msg) {
+            clearTimeout(pressTimer);
+            removeCopyButton();
+            return;
+        }
+
+        removeCopyButton();
+        clearTimeout(pressTimer);
+        longPressTriggered = false;
+
+        pressTimer = setTimeout(function () {
+            longPressTriggered = true;
+            showCopyButton(msg);
+        }, 550);
+    });
+
+    document.addEventListener("pointerup", function (e) {
+        if (!e.target.closest(".primevault-copy-button")) {
+            clearTimeout(pressTimer);
+        }
+    });
+
+    document.addEventListener("pointercancel", function () {
+        clearTimeout(pressTimer);
+    });
+});
+
 window.addEventListener("load", function () {
     const help = document.querySelector(".help-floating");
     if (!help) return;
@@ -903,7 +1239,7 @@ def forgot_password():
                 """
                 SELECT code FROM verification_codes
                 WHERE user_id = ?
-                ORDER BY id DESC
+                ORDER BY id ASC
                 LIMIT 1
                 """,
                 (user_id,)
@@ -1208,7 +1544,7 @@ def verify(user_id):
         record = conn.execute("""
             SELECT * FROM verification_codes
             WHERE user_id = ?
-            ORDER BY id DESC LIMIT 1
+            ORDER BY id ASC LIMIT 1
         """, (user_id,)).fetchone()
 
         if record and record["code"] == code:
@@ -1258,7 +1594,7 @@ def dashboard():
     recent = conn.execute("""
         SELECT * FROM transactions
         WHERE sender_user_id = ? OR receiver_user_id = ?
-        ORDER BY id DESC
+        ORDER BY id ASC
         LIMIT 3
     """, (user["id"], user["id"])).fetchall()
 
@@ -2959,7 +3295,7 @@ def transactions():
     rows = conn.execute("""
         SELECT * FROM transactions
         WHERE sender_user_id = ? OR receiver_user_id = ?
-        ORDER BY id DESC
+        ORDER BY id ASC
     """, (user["id"], user["id"])).fetchall()
     conn.close()
 
@@ -3486,6 +3822,28 @@ def help_center():
                 (user["id"], "user", message, image_data, now)
             )
 
+            # Notify the administrator about the new customer message.
+            admin = conn.execute("""
+                SELECT id
+                FROM users
+                WHERE role = 'admin'
+                ORDER BY id ASC
+                LIMIT 1
+            """).fetchone()
+
+            if admin:
+                customer_name = f'{user["username"]} {user["surname"]}'.strip()
+                conn.execute("""
+                    INSERT INTO notifications
+                    (user_id, message, is_read, created_at, support_user_id)
+                    VALUES (?, ?, 0, ?, ?)
+                """, (
+                    admin["id"],
+                    f"New message from {customer_name}",
+                    now,
+                    user["id"]
+                ))
+
             conn.commit()
             conn.close()
 
@@ -3495,7 +3853,7 @@ def help_center():
 
     messages = conn.execute(
         """
-        SELECT sender_role, message, image_data, created_at
+        SELECT id, sender_role, message, image_data, created_at
         FROM support_messages
         WHERE user_id = ?
         ORDER BY id ASC
@@ -3510,15 +3868,16 @@ def help_center():
     for msg in messages:
         image_html = ""
         if msg["image_data"]:
-            image_html = f'<img src="{msg["image_data"]}" alt="Support attachment" style="display:block;max-width:100%;max-height:300px;margin-top:8px;border-radius:12px;">'
+            image_html = f'<img src="{msg["image_data"]}" alt="Support attachment" onclick="openPrimeVaultPhoto(this.src)" style="display:block;max-width:100%;max-height:300px;width:auto;height:auto;margin-top:8px;border-radius:12px;cursor:zoom-in;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;">'
         if msg["sender_role"] == "user":
             chat += f"""
-            <div style="text-align:right;margin:10px 0;">
-                <div style="display:inline-block;max-width:80%;
+            <div style="display:flex;justify-content:flex-end;align-items:flex-start;margin:6px 0;width:100%;box-sizing:border-box;">
+                <div class="primevault-message-target" data-message-id="{msg["id"]}" data-sender="user" data-copy-text="{msg["message"]}" data-has-photo="{1 if msg["image_data"] else 0}" data-can-delete="1" data-is-deleted="{1 if msg["message"] == "This message was deleted" else 0}" style="display:table;width:auto;max-width:78%;height:auto;min-height:0;box-sizing:border-box;
                             background:#111827;color:white;
-                            padding:12px;border-radius:16px 16px 4px 16px;">
-                    {msg["message"]}{image_html}
-                    <div style="font-size:10px;opacity:.6;margin-top:5px;">
+                            padding:7px 9px;position:relative;border-radius:16px 16px 4px 16px;overflow-wrap:anywhere;word-break:break-word;white-space:pre-wrap;">
+                    <div class="primevault-copy-message" data-message-id="{msg["id"]}" data-sender="user" data-copy-text="{msg["message"]}" style="user-select:none !important;-webkit-user-select:none !important;-webkit-touch-callout:none !important;cursor:pointer;display:block;height:auto;min-height:0;text-align:left !important;
+                                 margin:0;line-height:20px;">{msg["message"]}</div>{image_html}
+                    <div style="display:block;text-align:right;font-size:10px;white-space:nowrap;line-height:13px;opacity:.65;margin-top:4px;">
                         {msg["created_at"]}
                     </div>
                 </div>
@@ -3526,13 +3885,14 @@ def help_center():
             """
         else:
             chat += f"""
-            <div style="text-align:left;margin:10px 0;">
-                <div style="display:inline-block;max-width:80%;
+            <div style="display:flex;justify-content:flex-start;align-items:flex-start;margin:6px 0;width:100%;box-sizing:border-box;">
+                <div class="primevault-message-target" data-message-id="{msg["id"]}" data-sender="user" data-copy-text="{msg["message"]}" data-has-photo="{1 if msg["image_data"] else 0}" data-can-delete="0" data-is-deleted="{1 if msg["message"] == "This message was deleted" else 0}" style="display:table;width:auto;max-width:78%;height:auto;min-height:0;box-sizing:border-box;
                             background:#f1f5f9;color:#111827;
-                            padding:12px;border-radius:16px 16px 16px 4px;">
-                    <strong>PrimeVault Support</strong>
-                    <div>{msg["message"]}</div>{image_html}
-                    <div style="font-size:10px;color:#64748b;margin-top:5px;">
+                            padding:7px 9px;position:relative;border-radius:16px 16px 16px 4px;overflow-wrap:anywhere;word-break:break-word;white-space:pre-wrap;">
+                    <strong style="display:none;">PrimeVault Support</strong>
+                    <div class="primevault-copy-message" data-message-id="{msg["id"]}" data-sender="admin" data-copy-text="{msg["message"]}" style="user-select:none !important;-webkit-user-select:none !important;-webkit-touch-callout:none !important;cursor:pointer;display:block;height:auto;min-height:0;text-align:left !important;
+                                 margin:0;line-height:20px;">{msg["message"]}</div>{image_html}
+                    <div style="display:block;text-align:right;font-size:10px;white-space:nowrap;line-height:13px;color:#64748b;margin-top:4px;">
                         {msg["created_at"]}
                     </div>
                 </div>
@@ -3550,7 +3910,7 @@ def help_center():
     return page("Help Center", f"""
 <div style="position:relative;width:100%;height:30px;margin:0 0 10px 0;">
     <button type="button"
-            onclick="history.back(); return false;"
+            onclick="window.location.href='/dashboard'; return false;"
             style="position:absolute;left:0;top:0;width:auto;
                    border:0;background:#eff6ff;color:#2563eb;
                    padding:6px 10px;border-radius:8px;
@@ -3560,33 +3920,43 @@ def help_center():
     </button>
 </div>
 
-<div class="card">
-    <h2>Help Center</h2>
-    <p style="color:#64748b;">
-        Find answers or contact PrimeVault Support.
-    </p>
+<div class="card" style="padding:14px 18px;">
+    <details>
+        <summary style="cursor:pointer;font-size:20px;font-weight:800;color:#111827;
+                         list-style-position:inside;">
+            ❓ Help Center
+        </summary>
 
-    <details style="margin-top:15px;">
-        <summary><strong>How do I make a transfer?</strong></summary>
-        <p>Open Transfer from the dashboard and follow the transfer instructions.</p>
-    </details>
+        <div style="padding:12px 4px 2px;">
+            <p style="color:#64748b;">
+                Find answers or contact PrimeVault Support.
+            </p>
 
-    <details style="margin-top:15px;">
-        <summary><strong>Why can't I transfer?</strong></summary>
-        <p>Your transfer access may need to be activated by the PrimeVault administrator.</p>
-    </details>
+            <details style="margin-top:15px;">
+                <summary><strong>How do I make a transfer?</strong></summary>
+                <p>Open Transfer from the dashboard and follow the transfer instructions.</p>
+            </details>
 
-    <details style="margin-top:15px;">
-        <summary><strong>How do I verify my account?</strong></summary>
-        <p>Use the confirmation code provided for your registered email address.</p>
+            <details style="margin-top:15px;">
+                <summary><strong>Why can't I transfer?</strong></summary>
+                <p>Your transfer access may need to be activated by the PrimeVault administrator.</p>
+            </details>
+
+            <details style="margin-top:15px;">
+                <summary><strong>How do I verify my account?</strong></summary>
+                <p>Use the confirmation code provided for your registered email address.</p>
+            </details>
+        </div>
     </details>
 </div>
 
 <div class="card">
     <h3>💬 Customer Support</h3>
 
-    <div style="border:1px solid #e5e7eb;border-radius:16px;
-                padding:10px;max-height:350px;overflow-y:auto;">
+    <div class="primevault-chat-window" style="border:1px solid #e5e7eb;border-radius:16px;
+                padding:10px;height:270px;overflow-y:auto;overflow-x:hidden;
+                
+                box-sizing:border-box;">
         {chat}
     </div>
 
@@ -3595,36 +3965,89 @@ def help_center():
           enctype="multipart/form-data"
           style="margin-top:12px;">
 
-        <textarea name="message"
-                  rows="3"
-                  placeholder="Type your message..."
-                  style="width:100%;box-sizing:border-box;
-                         padding:12px;border:1px solid #d1d5db;
-                         border-radius:12px;resize:none;"></textarea>
+    <div style="display:flex;align-items:flex-end;gap:7px;
+                background:#f0f2f5;border-radius:24px;
+                padding:6px 7px 6px 6px;
+                border:1px solid #e5e7eb;">
 
-        <div style="margin-top:10px;">
-        <label style="display:block;
-                      padding:12px;text-align:center;
-                      border:1px dashed #cbd5e1;
-                      border-radius:12px;
-                      cursor:pointer;color:#475569;">
-            📷 Add Image
-            <input type="file"
-                   name="image"
-                   accept="image/jpeg,image/png,image/webp"
-                   style="display:none;"
-                   onchange="if (this.files.length) this.form.submit();">
-            <div class="image-name"
-                 style="font-size:12px;margin-top:5px;color:#94a3b8;">
-                Select a picture to send
-            </div>
+        <label for="support-image"
+               style="flex:0 0 42px;width:42px;height:42px;
+                      display:flex;align-items:center;
+                      justify-content:center;
+                      border-radius:50%;cursor:pointer;
+                      background:white;color:#2563eb;
+                      font-size:23px;">
+            📷
         </label>
-        </div>
+
+        <input id="support-image"
+               type="file"
+               name="image"
+               accept="image/jpeg,image/png,image/webp"
+               style="display:none;"
+               onchange="showSelectedPhoto(this);">
+
+        <textarea id="support-message"
+                  name="message"
+                  rows="1"
+                  placeholder="Type a message..."
+                  oninput="autoGrowMessage(this)"
+                  style="flex:1;width:100%;min-width:0;
+                         max-height:130px;min-height:42px;
+                         box-sizing:border-box;
+                         padding:11px 8px;
+                         border:0;outline:none;
+                         background:transparent;
+                         resize:none;
+                         font-size:15px;
+                         line-height:20px;
+                         font-family:inherit;"></textarea>
+
+        <button type="submit"
+                aria-label="Send message"
+                style="flex:0 0 42px;width:42px;height:42px;
+                       padding:0;margin:0;
+                       border:0;border-radius:50%;
+                       background:#2563eb;color:white;
+                       display:flex;align-items:center;
+                       justify-content:center;
+                       font-size:21px;font-weight:800;
+                       cursor:pointer;">
+            ➤
+        </button>
+    </div>
+
+    <div id="selected-photo"
+         style="display:none;margin:7px 8px 0;
+                padding:7px 10px;
+                background:#eff6ff;
+                border-radius:12px;
+                font-size:12px;color:#2563eb;">
+    </div>
+
+    <script>
+    function autoGrowMessage(el) {{
+        el.style.height = "42px";
+        el.style.height = Math.min(el.scrollHeight, 130) + "px";
+    }}
+
+    function showSelectedPhoto(input) {{
+        const box = document.getElementById("selected-photo");
+
+        if (input.files && input.files.length) {{
+            box.style.display = "block";
+            box.textContent = "📷 " + input.files[0].name;
+        }} else {{
+            box.style.display = "none";
+            box.textContent = "";
+        }}
+    }}
+    </script>
 </form>
 </div>
 
 <div class="card" style="text-align:center;">
-    <strong>PrimeVault Support</strong>
+    <strong style="display:none;">PrimeVault Support</strong>
     <p style="color:#64748b;margin-bottom:0;">
         Messages are handled inside this local simulator.
     </p>
@@ -3636,6 +4059,62 @@ def help_center():
 def customer_support():
     return redirect(url_for("help_center"))
 
+
+
+@app.route("/support/delete/<int:message_id>", methods=["POST"])
+def delete_support_message(message_id):
+    user = current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    conn = db()
+
+    msg = conn.execute("""
+        SELECT id, user_id, sender_role
+        FROM support_messages
+        WHERE id = ?
+        LIMIT 1
+    """, (message_id,)).fetchone()
+
+    if not msg:
+        conn.close()
+        return redirect(url_for("help_center"))
+
+    # Users can delete their own messages.
+    # Admin can delete messages sent by the admin.
+    allowed = (
+        (user["role"] == "user" and
+         msg["sender_role"] == "user" and
+         msg["user_id"] == user["id"])
+        or
+        (user["role"] == "admin" and
+         msg["sender_role"] == "admin")
+    )
+
+    if not allowed:
+        conn.close()
+        return redirect(
+            url_for(
+                "admin_support" if user["role"] == "admin" else "help_center"
+            )
+        )
+
+    conn.execute("""
+        UPDATE support_messages
+        SET message = ?, image_data = NULL
+        WHERE id = ?
+    """, ("This message was deleted", message_id))
+
+    conn.commit()
+    conn.close()
+
+    if user["role"] == "admin":
+        return redirect(url_for(
+            "admin_support",
+            user_id=msg["user_id"]
+        ))
+
+    return redirect(url_for("help_center"))
 
 @app.route("/admin/support")
 def admin_support():
@@ -3679,6 +4158,16 @@ def admin_support():
     selected_id = request.args.get("user_id", type=int)
 
     if selected_id:
+        conn.execute("""
+            UPDATE notifications
+            SET is_read = 1
+            WHERE user_id = ?
+              AND support_user_id = ?
+              AND is_read = 0
+        """, (user["id"], selected_id))
+
+        conn.commit()
+
         selected_user = conn.execute("""
             SELECT id, username, surname, email, phone
             FROM users
@@ -3686,7 +4175,7 @@ def admin_support():
         """, (selected_id,)).fetchone()
 
         conversation = conn.execute("""
-            SELECT sender_role, message, image_data, created_at
+            SELECT id, sender_role, message, image_data, created_at
             FROM support_messages
             WHERE user_id = ?
             ORDER BY id ASC
@@ -3702,19 +4191,22 @@ def admin_support():
     for u in users:
         user_list_html += f"""
         <a href="/admin/support?user_id={u["id"]}"
-           style="display:block;text-decoration:none;color:#111827;
-                  padding:14px;border:1px solid #e5e7eb;
-                  border-radius:14px;margin-top:10px;">
-            <strong>{u["username"]} {u["surname"]}</strong>
-            <div style="font-size:13px;color:#64748b;margin-top:4px;">
-                {u["email"]}
+           style="display:flex;align-items:center;
+                  justify-content:space-between;
+                  text-decoration:none;color:#111827;
+                  padding:16px;border:1px solid #e5e7eb;
+                  border-radius:14px;margin-top:10px;
+                  background:white;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:42px;height:42px;border-radius:50%;
+                            background:#e5e7eb;display:flex;
+                            align-items:center;justify-content:center;
+                            font-size:20px;">
+                    👤
+                </div>
+                <strong>{u["username"]} {u["surname"]}</strong>
             </div>
-            <div style="font-size:13px;color:#64748b;margin-top:6px;">
-                {u["last_message"] or ""}
-            </div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:5px;">
-                {u["last_time"] or ""}
-            </div>
+            <span style="font-size:22px;color:#94a3b8;">›</span>
         </a>
         """
 
@@ -3729,17 +4221,15 @@ def admin_support():
     for msg in conversation:
         image_html = ""
         if msg["image_data"]:
-            image_html = f'<img src="{msg["image_data"]}" alt="Support attachment" style="display:block;max-width:100%;max-height:300px;margin-top:8px;border-radius:12px;">'
+            image_html = f'<img src="{msg["image_data"]}" alt="Support attachment" onclick="openPrimeVaultPhoto(this.src)" style="display:block;max-width:100%;max-height:300px;width:auto;height:auto;margin-top:8px;border-radius:12px;cursor:zoom-in;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;">'
 
         if msg["sender_role"] == "admin":
             conversation_html += f"""
-            <div style="display:flex;justify-content:flex-end;margin:10px 0;">
-                <div style="max-width:82%;background:#111827;color:white;
-                             padding:11px 14px;border-radius:16px 16px 4px 16px;">
-                    <strong style="display:block;margin-bottom:4px;">
-                        You — Admin
-                    </strong>
-                    <div>{msg["message"]}</div>
+            <div style="display:flex;justify-content:flex-end;align-items:flex-start;margin:6px 0;width:100%;box-sizing:border-box;">
+                <div class="primevault-message-target" data-message-id="{msg["id"]}" data-sender="admin" data-copy-text="{msg["message"]}" data-has-photo="{1 if msg["image_data"] else 0}" data-can-delete="1" data-is-deleted="{1 if msg["message"] == "This message was deleted" else 0}" style="display:table;width:auto;max-width:78%;height:auto;min-height:0;box-sizing:border-box;text-align:left;background:#111827;color:white;
+                             padding:7px 9px;position:relative;border-radius:16px 16px 4px 16px;overflow-wrap:anywhere;word-break:break-word;white-space:pre-wrap;">
+                    
+                    <div class="primevault-copy-message" data-message-id="{msg["id"]}" data-sender="admin" data-copy-text="{msg["message"]}" style="user-select:none !important;-webkit-user-select:none !important;-webkit-touch-callout:none !important;cursor:pointer;">{msg["message"]}</div>
                     {image_html}
                     <small style="opacity:.65;">{msg["created_at"]}</small>
                 </div>
@@ -3747,13 +4237,11 @@ def admin_support():
             """
         else:
             conversation_html += f"""
-            <div style="display:flex;justify-content:flex-start;margin:10px 0;">
-                <div style="max-width:82%;background:#f1f5f9;color:#111827;
-                             padding:11px 14px;border-radius:16px 16px 16px 4px;">
-                    <strong style="display:block;margin-bottom:4px;">
-                        Customer
-                    </strong>
-                    <div>{msg["message"]}</div>
+            <div style="display:flex;justify-content:flex-start;align-items:flex-start;margin:6px 0;width:100%;box-sizing:border-box;">
+                <div class="primevault-message-target" data-message-id="{msg["id"]}" data-sender="user" data-copy-text="{msg["message"]}" data-has-photo="{1 if msg["image_data"] else 0}" data-can-delete="0" data-is-deleted="{1 if msg["message"] == "This message was deleted" else 0}" style="display:table;width:auto;max-width:78%;height:auto;min-height:0;box-sizing:border-box;text-align:left;background:#f1f5f9;color:#111827;
+                             padding:7px 9px;position:relative;border-radius:16px 16px 16px 4px;overflow-wrap:anywhere;word-break:break-word;white-space:pre-wrap;">
+                    
+                    <div class="primevault-copy-message" data-message-id="{msg["id"]}" data-sender="user" data-copy-text="{msg["message"]}" style="user-select:none !important;-webkit-user-select:none !important;-webkit-touch-callout:none !important;cursor:pointer;">{msg["message"]}</div>
                     {image_html}
                     <small style="color:#64748b;">{msg["created_at"]}</small>
                 </div>
@@ -3772,57 +4260,63 @@ def admin_support():
                 {selected_user["phone"]}
             </p>
 
-            <div style="background:#ffffff;border:1px solid #e5e7eb;
+            <div class="primevault-chat-window" style="background:#ffffff;border:1px solid #e5e7eb;
                         border-radius:16px;padding:10px;
-                        max-height:400px;overflow-y:auto;">
+                        max-height:270px;overflow-y:auto;overflow-x:hidden;">
                 {conversation_html}
             </div>
 
             <form method="POST"
                   action="/admin/support/reply/{selected_user["id"]}"
-                                  enctype="multipart/form-data"
+                  enctype="multipart/form-data"
                   style="margin-top:12px;">
-                
-<label style="display:block;margin-top:10px;
-              padding:12px;text-align:center;
-              border:1px dashed #cbd5e1;
-              border-radius:12px;
-              cursor:pointer;color:#475569;">
-    📷 Add Image
-    <input type="file"
-           name="image"
-           accept="image/jpeg,image/png,image/webp"
-           style="display:none;"
-           onchange="if (this.files.length) this.form.submit();">
-    <div class="admin-image-name"
-         style="font-size:12px;margin-top:5px;color:#94a3b8;">
-        No image selected
-    </div>
-</label>
 
-<textarea name="message"
-                          rows="3"
-                          placeholder="Reply to this customer..."
-                          
-                          style="width:100%;padding:12px;border-radius:12px;
-                                 border:1px solid #d1d5db;
-                                 box-sizing:border-box;
-                                 resize:none;"></textarea>
+                <div style="display:flex;align-items:center;gap:7px;
+                            background:#f0f2f5;border:1px solid #e5e7eb;
+                            border-radius:24px;padding:6px;">
 
-                <button type="submit"
-                        style="width:100%;margin-top:10px;">
-                    Send Reply
-                </button>
-            
-<button type="submit"
-        id="admin-image-send-button"
-        style="display:none;position:fixed;right:20px;bottom:155px;
-               width:56px;height:56px;border:0;border-radius:50%;
-               background:#2563eb;color:white;font-size:28px;font-weight:bold;
-               align-items:center;justify-content:center;
-               box-shadow:0 6px 20px rgba(37,99,235,.4);
-               z-index:10000;cursor:pointer;">▶</button>
-</form>
+                    <label for="admin-support-image"
+                           style="width:42px;height:42px;flex:0 0 42px;
+                                  display:flex;align-items:center;
+                                  justify-content:center;
+                                  border-radius:50%;background:white;
+                                  cursor:pointer;font-size:23px;">
+                        📷
+                    </label>
+
+                    <input id="admin-support-image"
+                           type="file"
+                           name="image"
+                           accept="image/jpeg,image/png,image/webp"
+                           style="display:none;">
+
+                    <textarea name="message"
+                              rows="1"
+                              placeholder="Reply..."
+                              style="flex:1;min-width:0;height:42px;
+                                     max-height:120px;
+                                     box-sizing:border-box;
+                                     padding:11px 8px;
+                                     border:0;outline:none;
+                                     background:transparent;
+                                     resize:vertical;
+                                     font-size:15px;
+                                     line-height:20px;
+                                     font-family:inherit;"></textarea>
+
+                    <button type="submit"
+                            style="width:42px;height:42px;flex:0 0 42px;
+                                   padding:0;border:0;border-radius:50%;
+                                   background:#2563eb;color:white;
+                                   display:flex;align-items:center;
+                                   justify-content:center;
+                                   font-size:21px;font-weight:800;
+                                   cursor:pointer;">
+                        ➤
+                    </button>
+
+                </div>
+            </form>
         </div>
         """
 
@@ -3913,9 +4407,14 @@ def admin_support_reply(user_id):
 
             conn.execute("""
                 INSERT INTO notifications
-                (user_id, message, is_read, created_at)
-                VALUES (?, ?, 0, ?)
-            """, (user_id, "New message from PrimeVault Support", now))
+                (user_id, message, is_read, created_at, support_user_id)
+                VALUES (?, ?, 0, ?, ?)
+            """, (
+                user_id,
+                "New message from PrimeVault Support",
+                now,
+                user_id
+            ))
 
             conn.commit()
 
@@ -4462,8 +4961,16 @@ def admin():
             """
         ).fetchall()
 
-    conn.close()
 
+
+    admin_unread_support = conn.execute("""
+        SELECT COUNT(DISTINCT support_user_id) AS count
+        FROM notifications
+        WHERE user_id = ?
+          AND is_read = 0
+          AND support_user_id IS NOT NULL
+    """, (user["id"],)).fetchone()["count"]
+    conn.close()
 
     total_users = len(users)
     active_users = sum(1 for u in users if u["active"])
@@ -4530,6 +5037,25 @@ def admin():
     registration_link = request.host_url.rstrip("/") + url_for("register")
 
     html = f"""
+<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+    <a href="/admin/support"
+       style="position:relative;text-decoration:none;
+              font-size:25px;display:flex;
+              align-items:center;justify-content:center;
+              width:48px;height:48px;border-radius:50%;
+              background:white;border:1px solid #e5e7eb;">
+        🔔
+        <span style="position:absolute;top:-3px;right:-3px;
+                     min-width:18px;height:18px;padding:0 4px;
+                     border-radius:10px;background:#ef4444;color:white;
+                     font-size:10px;font-weight:800;
+                     display:{'flex' if admin_unread_support > 0 else 'none'};
+                     align-items:center;justify-content:center;">
+            {admin_unread_support}
+        </span>
+    </a>
+</div>
+
 <div class="card">
     <h2>PrimeVault Admin</h2>
     <p class="small">Admin simulated balance</p>
@@ -4852,6 +5378,175 @@ def fund_user(user_id):
     return redirect(url_for("admin"))
 
 
+@app.route("/notifications/support/<int:notification_id>", methods=["GET", "POST"])
+def notification_support(notification_id):
+    user = current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    if user["role"] == "admin":
+        return redirect(url_for("admin_support"))
+
+    conn = db()
+
+    notification = conn.execute("""
+        SELECT *
+        FROM notifications
+        WHERE id = ?
+          AND user_id = ?
+          AND (
+              support_user_id = ?
+              OR (
+                  support_user_id IS NULL
+                  AND message = 'New message from PrimeVault Support'
+              )
+          )
+        LIMIT 1
+    """, (notification_id, user["id"], user["id"])).fetchone()
+
+    if not notification:
+        conn.close()
+        return redirect(url_for("notifications"))
+
+    # Opening a support notification marks this support conversation as read.
+    conn.execute("""
+        UPDATE notifications
+        SET is_read = 1
+        WHERE user_id = ?
+          AND (
+              support_user_id = ?
+              OR (
+                  support_user_id IS NULL
+                  AND message = 'New message from PrimeVault Support'
+              )
+          )
+    """, (user["id"], user["id"]))
+
+    conn.commit()
+
+    if request.method == "POST":
+        message = request.form.get("message", "").strip()
+
+        if message:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            conn.execute("""
+                INSERT INTO support_messages
+                (user_id, sender_role, message, image_data, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                user["id"],
+                "user",
+                message,
+                None,
+                now
+            ))
+
+            admin = conn.execute("""
+                SELECT id
+                FROM users
+                WHERE role = 'admin'
+                ORDER BY id ASC
+                LIMIT 1
+            """).fetchone()
+
+            if admin:
+                customer_name = f'{user["username"]} {user["surname"]}'.strip()
+
+                conn.execute("""
+                    INSERT INTO notifications
+                    (user_id, message, is_read, created_at, support_user_id)
+                    VALUES (?, ?, 0, ?, ?)
+                """, (
+                    admin["id"],
+                    f"New message from {customer_name}",
+                    now,
+                    user["id"]
+                ))
+
+            conn.commit()
+
+        conn.close()
+        return redirect(url_for(
+            "notification_support",
+            notification_id=notification_id
+        ))
+
+    conn.execute("""
+        UPDATE notifications
+        SET is_read = 1
+        WHERE user_id = ?
+          AND support_user_id = ?
+    """, (user["id"], user["id"]))
+
+    conversation = conn.execute("""
+        SELECT id, sender_role, message, image_data, created_at
+        FROM support_messages
+        WHERE user_id = ?
+        ORDER BY id ASC
+    """, (user["id"],)).fetchall()
+
+    conn.commit()
+    conn.close()
+
+    language = user["language"] or "English"
+    t = TRANSLATIONS.get(language, TRANSLATIONS["English"])
+
+    return page("Support Conversation", render_template_string("""
+    <div style="padding:20px;max-width:650px;margin:auto;">
+        <h2 style="margin-bottom:18px;">💬 PrimeVault Support</h2>
+
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;
+                    border-radius:16px;padding:15px;margin-bottom:16px;">
+            {% if conversation %}
+                {% for item in conversation %}
+                <div style="margin-bottom:12px;
+                            text-align:{% if item['sender_role'] == 'user' %}right{% else %}left{% endif %};">
+                    <div style="display:inline-block;max-width:85%;
+                                padding:11px 14px;border-radius:14px;
+                                background:{% if item['sender_role'] == 'user' %}#dbeafe{% else %}#f3f4f6{% endif %};">
+                        <div style="font-size:12px;font-weight:800;margin-bottom:4px;">
+                            {% if item['sender_role'] == 'user' %}You{% else %}PrimeVault Support{% endif %}
+                        </div>
+                        <div style="user-select:text;-webkit-user-select:text;
+                                    cursor:text;">{{ item["message"] }}</div>
+                        <div style="font-size:10px;color:#6b7280;margin-top:5px;">
+                            {{ item["created_at"] }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color:#6b7280;">No messages yet.</p>
+            {% endif %}
+        </div>
+
+        <form method="POST">
+            <textarea name="message"
+                      placeholder="Write your reply..."
+                      required
+                      style="width:100%;min-height:110px;padding:12px;
+                             border:1px solid #d1d5db;border-radius:12px;
+                             box-sizing:border-box;resize:vertical;"></textarea>
+
+            <button type="submit"
+                    style="width:100%;margin-top:10px;padding:13px;
+                           border:0;border-radius:12px;background:#111827;
+                           color:white;font-weight:800;">
+                Send Message
+            </button>
+        </form>
+
+        <a href="/notifications"
+           style="display:block;text-align:center;margin-top:14px;
+                  padding:12px;border-radius:12px;background:#f3f4f6;
+                  color:#111827;text-decoration:none;font-weight:700;">
+            ← Back to Notifications
+        </a>
+    </div>
+    """, conversation=conversation, user=user, t=t))
+
+
 @app.route("/notifications")
 def notifications():
     user = current_user()
@@ -4862,7 +5557,7 @@ def notifications():
     items = conn.execute("""
         SELECT * FROM notifications
         WHERE user_id = ?
-        ORDER BY id DESC
+        ORDER BY id ASC
     """, (user["id"],)).fetchall()
     conn.close()
 
@@ -4875,6 +5570,21 @@ def notifications():
 
         {% if items %}
             {% for item in items %}
+            {% if item["support_user_id"] or item["message"] == "New message from PrimeVault Support" %}
+            <a href="/notifications/support/{{ item['id'] }}"
+               style="display:block;padding:15px;margin-bottom:12px;
+                      border-radius:14px;text-decoration:none;color:inherit;
+                      background:{% if item['is_read'] %}#f3f4f6{% else %}#e0f2fe{% endif %};
+                      border:1px solid #e5e7eb;">
+                <div style="font-weight:700;">{{ item["message"] }}</div>
+                <div style="font-size:12px;color:#6b7280;margin-top:6px;">
+                    {{ item["created_at"] }}
+                </div>
+                <div style="font-size:12px;color:#2563eb;margin-top:8px;font-weight:700;">
+                    Tap to open conversation →
+                </div>
+            </a>
+            {% else %}
             <div style="padding:15px;margin-bottom:12px;border-radius:14px;
                         background:{% if item['is_read'] %}#f3f4f6{% else %}#e0f2fe{% endif %};
                         border:1px solid #e5e7eb;">
@@ -4883,6 +5593,7 @@ def notifications():
                     {{ item["created_at"] }}
                 </div>
             </div>
+            {% endif %}
             {% endfor %}
         {% else %}
             <p style="color:#6b7280;">No notifications yet.</p>
