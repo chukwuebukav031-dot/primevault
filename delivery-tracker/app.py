@@ -257,7 +257,7 @@ def admin():
             shipment_id,
             request.form["current_location"],
             request.form["status"],
-            "Shipment created in the tracking simulator."
+            "Shipment created in TRACK."
         ))
 
         conn.commit()
