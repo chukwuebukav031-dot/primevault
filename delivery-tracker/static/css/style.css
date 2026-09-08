@@ -3813,3 +3813,25 @@ body.admin-dark .admin-message-text {
 }
 
 /* ===== END FINAL ADMIN WHATSAPP-STYLE BUBBLE ALIGNMENT ===== */
+
+/* ===== FINAL ADMIN REFRESH-STABLE MESSAGE LAYOUT ===== */
+
+body.admin-dark .admin-message-list {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+}
+
+body.admin-dark .admin-message-item.sent-message {
+    align-self: flex-end !important;
+    width: fit-content !important;
+    max-width: 82% !important;
+}
+
+body.admin-dark .admin-message-item.received-message {
+    align-self: flex-start !important;
+    width: fit-content !important;
+    max-width: 82% !important;
+}
+
+/* ===== END FINAL ADMIN REFRESH-STABLE MESSAGE LAYOUT ===== */
