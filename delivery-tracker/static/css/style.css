@@ -3764,3 +3764,52 @@ body.admin-dark .message-composer textarea {
 }
 
 /* ===== END FINAL ADMIN MESSAGE WIDTH FIX ===== */
+
+/* ===== FINAL ADMIN WHATSAPP-STYLE BUBBLE ALIGNMENT ===== */
+
+body.admin-dark .admin-message-list {
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+}
+
+body.admin-dark .admin-message-item {
+    display: block !important;
+    width: fit-content !important;
+    max-width: 82% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+}
+
+body.admin-dark .admin-message-item.sent-message {
+    align-self: flex-end !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    text-align: left !important;
+}
+
+body.admin-dark .admin-message-item.received-message {
+    align-self: flex-start !important;
+    margin-left: 0 !important;
+    margin-right: auto !important;
+    text-align: left !important;
+}
+
+body.admin-dark .admin-message-text {
+    text-align: left !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+}
+
+@media (max-width: 600px) {
+    body.admin-dark .admin-message-item {
+        max-width: 82% !important;
+    }
+}
+
+/* ===== END FINAL ADMIN WHATSAPP-STYLE BUBBLE ALIGNMENT ===== */
