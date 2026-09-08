@@ -124,7 +124,7 @@
     <div class="shipment-messages" id="messages">
         <h3>💬 Messages ({{ message_count }})</h3>
 
-        <div class="admin-message-list">
+        <div class="admin-message-list" data-last-message-id="{{ messages[-1]['id'] if messages else 0 }}">
             {% if messages %}
                 {% for message in messages %}
                 <div class="admin-message-item {{ 'sent-message' if message['sender'] == 'admin' else 'received-message' }}" data-message-id="{{ message['id'] }}">
