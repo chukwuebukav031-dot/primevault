@@ -93,7 +93,7 @@ def send_verification_email(to_email, code):
     password = os.getenv("SMTP_PASSWORD")
     sender = os.getenv("SMTP_FROM") or username
 
-    # Local simulator fallback when SMTP is not configured.
+    # International fallback when SMTP is not configured.
     if not all([host, username, password, sender]):
         return False
 
@@ -104,7 +104,7 @@ def send_verification_email(to_email, code):
     msg.set_content(
         f"Your PrimeVault verification code is: {code}\n\n"
         "Enter this code on the PrimeVault verification page.\n"
-        "This is a local banking simulator."
+        "This is a secure banking service."
     )
 
     try:
@@ -248,7 +248,7 @@ def init_db():
             "Administrator",
             "admin@primevault.local",
             "0000000000",
-            "Local",
+            "International",
             generate_password_hash("PrimeVaultAdmin123!"),
             generate_password_hash("0000"),
             "man",
@@ -1273,7 +1273,7 @@ def forgot_password():
 
     if code_sent:
         form = """
-        <p>Your local reset code is:</p>
+        <p>Your international reset code is:</p>
         <h2 style="text-align:center;letter-spacing:4px;">%s</h2>
 
         <form method="POST">
@@ -1508,7 +1508,7 @@ def created():
     <p>Your PrimeVault account number:</p>
     <h2>{account_number}</h2>
 
-    <p>Local verification code:</p>
+    <p>International verification code:</p>
     <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
         <h2 id="verificationCode" style="margin:0;">{code}</h2>
         <button type="button"
@@ -1536,7 +1536,7 @@ def created():
     </script>
 
     <p class="small">
-        This code is displayed locally because this is a simulator.
+        This code is displayed for verification.
         No real email is sent.
     </p>
 
@@ -1615,7 +1615,7 @@ def dashboard():
 
     language = user["language"] or "English"
 
-    # Currency display settings for the local simulator.
+    # Currency display settings.
     # The stored account balance remains USD.
     requested_currency = request.args.get("currency")
     currency = requested_currency or user["currency"] or "USD"
@@ -2345,7 +2345,7 @@ def transfer():
             conn.close()
             return render_template_string("""
             <script>
-            alert("Insufficient simulated balance.");
+            alert("Insufficient balance.");
             history.back();
             </script>
             """)
@@ -2707,7 +2707,7 @@ textarea {
     <div class="header-title">{% if user["language"] == "Portuguese" %}Transferir Dinheiro{% elif user["language"] == "Spanish" %}Transferir Dinero{% else %}Transfer Money{% endif %}</div>
 
     <div class="header-subtitle">
-        {% if user["language"] == "Portuguese" %}Envie dinheiro com segurança dentro do simulador PrimeVault{% elif user["language"] == "Spanish" %}Envía dinero de forma segura dentro del simulador PrimeVault{% else %}Send money securely inside the PrimeVault simulator{% endif %}
+        {% if user["language"] == "Portuguese" %}Envie dinheiro com segurança com o PrimeVault{% elif user["language"] == "Spanish" %}Envía dinero de forma segura con PrimeVault{% else %}Send money securely with PrimeVault{% endif %}
     </div>
 </div>
 
@@ -2755,7 +2755,7 @@ textarea {
 </div>
 
 <div class="form-subtitle">
-    Choose where you want the simulated funds to go.
+    Choose where you want the funds to go.
 </div>
 
 {% if transfer_error %}
@@ -2886,7 +2886,7 @@ textarea {
 
 
 <div class="notice">
-    {% if user["language"] == "Portuguese" %}🔒 PrimeVault é um simulador bancário local.{% elif user["language"] == "Spanish" %}🔒 PrimeVault es un simulador bancario local.{% else %}🔒 PrimeVault is a local banking simulator.{% endif %}
+    {% if user["language"] == "Portuguese" %}🔒 PrimeVault é um serviço bancário seguro.{% elif user["language"] == "Spanish" %}🔒 PrimeVault es un servicio bancario seguro.{% else %}🔒 PrimeVault is a secure banking service.{% endif %}
     {% if user["language"] == "Portuguese" %} Nenhum banco real ou rede de pagamentos está conectado.{% elif user["language"] == "Spanish" %} No hay ningún banco real ni red de pagos conectada.{% else %} No real bank or payment network is connected.{% endif %}
 </div>
 
@@ -2896,7 +2896,7 @@ textarea {
 
 
 <div class="footer">
-    {% if user["language"] == "Portuguese" %}PrimeVault · Simulador Bancário Local{% elif user["language"] == "Spanish" %}PrimeVault · Simulador Bancario Local{% else %}PrimeVault · Local Banking Simulator{% endif %}
+    {% if user["language"] == "Portuguese" %}PrimeVault · Banking{% elif user["language"] == "Spanish" %}PrimeVault · Banking{% else %}PrimeVault · Banking{% endif %}
 </div>
 
 </div>
@@ -3198,7 +3198,7 @@ body {
 
     <h1>{% if tx["status"] == "Failed" %}{% if user["language"] == "Portuguese" %}Transferência Falhou{% elif user["language"] == "Spanish" %}Transferencia Fallida{% else %}Transfer Unsuccessful{% endif %}{% else %}{% if user["language"] == "Portuguese" %}Transferência Concluída{% elif user["language"] == "Spanish" %}Transferencia Exitosa{% else %}Transfer Successful{% endif %}{% endif %}</h1>
 
-    <p>{% if tx["status"] == "Failed" %}{% if user["language"] == "Portuguese" %}Sua transferência simulada não foi concluída.{% elif user["language"] == "Spanish" %}Tu transferencia simulada no se completó.{% else %}Your simulated transfer was not completed.{% endif %}{% else %}{% if user["language"] == "Portuguese" %}Sua transferência simulada foi concluída com sucesso.{% elif user["language"] == "Spanish" %}Tu transferencia simulada se completó correctamente.{% else %}Your simulated transfer was completed successfully.{% endif %}{% endif %}</p>
+    <p>{% if tx["status"] == "Failed" %}{% if user["language"] == "Portuguese" %}Sua transferência não foi concluída.{% elif user["language"] == "Spanish" %}Tu transferencia no se completó.{% else %}Your transfer was not completed.{% endif %}{% else %}{% if user["language"] == "Portuguese" %}Sua transferência foi concluída com sucesso.{% elif user["language"] == "Spanish" %}Tu transferencia se completó correctamente.{% else %}Your transfer was completed successfully.{% endif %}{% endif %}</p>
 
 </div>
 
@@ -3361,7 +3361,7 @@ async function shareReceipt() {
 </a>
 
 <div class="note">
-    {% if user["language"] == "Portuguese" %}PrimeVault · Simulador Bancário Local{% elif user["language"] == "Spanish" %}PrimeVault · Simulador Bancario Local{% else %}PrimeVault · Local Banking Simulator{% endif %}
+    {% if user["language"] == "Portuguese" %}PrimeVault · Banking{% elif user["language"] == "Spanish" %}PrimeVault · Banking{% else %}PrimeVault · Banking{% endif %}
 </div>
 
 </div>
@@ -4178,7 +4178,7 @@ def help_center():
 <div class="card" style="text-align:center;">
     <strong style="display:none;">PrimeVault Support</strong>
     <p style="color:#64748b;margin-bottom:0;">
-        Messages are handled inside this local simulator.
+        Messages are handled securely here.
     </p>
 </div>
 """)
@@ -4949,7 +4949,7 @@ body {
     <div class="icon">📋</div>
     <div class="info">
         <div class="name">{% if user["language"] == "Portuguese" %}Histórico de Transações{% elif user["language"] == "Spanish" %}Historial de Transacciones{% else %}Transaction History{% endif %}</div>
-        <div class="desc">{% if user["language"] == "Portuguese" %}Veja suas transações simuladas{% elif user["language"] == "Spanish" %}Consulta tus transacciones simuladas{% else %}View your simulated transactions{% endif %}</div>
+        <div class="desc">{% if user["language"] == "Portuguese" %}Veja suas transações{% elif user["language"] == "Spanish" %}Consulta tus transacciones{% else %}View your transactions{% endif %}</div>
     </div>
     <div class="arrow">›</div>
 </a>
@@ -5011,7 +5011,7 @@ body {
     <div class="icon">ℹ️</div>
     <div class="info">
         <div class="name">{% if user["language"] == "Portuguese" %}Sobre o PrimeVault{% elif user["language"] == "Spanish" %}Acerca de PrimeVault{% else %}About PrimeVault{% endif %}</div>
-        <div class="desc">{% if user["language"] == "Portuguese" %}Simulador bancário local{% elif user["language"] == "Spanish" %}Simulador bancario local{% else %}Local banking simulator{% endif %}</div>
+        <div class="desc">{% if user["language"] == "Portuguese" %}Banking{% elif user["language"] == "Spanish" %}Banking{% else %}Banking{% endif %}</div>
     </div>
     <div class="arrow">›</div>
 </div>
@@ -5033,7 +5033,7 @@ body {
 </a>
 
 <div class="version">
-    {% if user["language"] == "Portuguese" %}PrimeVault · Simulação Local{% elif user["language"] == "Spanish" %}PrimeVault · Simulación Local{% else %}PrimeVault · Local Simulation{% endif %}
+    {% if user["language"] == "Portuguese" %}PrimeVault · Banking{% elif user["language"] == "Spanish" %}PrimeVault · Banking{% else %}PrimeVault · Banking{% endif %}
 </div>
 
 </div>
@@ -5156,7 +5156,7 @@ def admin():
                name="amount"
                min="0.01"
                step="0.01"
-               placeholder="Simulated amount ($)"
+               placeholder="Amount ($)"
                required>
         <button type="submit">Fund Test Account</button>
     </form>
@@ -5187,7 +5187,7 @@ def admin():
 
 <div class="card">
     <h2>PrimeVault Admin</h2>
-    <p class="small">Admin simulated balance</p>
+    <p class="small">Admin balance</p>
 
     <div class="balance">
         ${admin_account["balance"]:,.2f}
@@ -5214,7 +5214,7 @@ def admin():
     <h3>🔗 User Registration</h3>
 
     <p class="small">
-        Share this local PrimeVault registration link with users.
+        Share this international PrimeVault registration link with users.
     </p>
 
     <input
