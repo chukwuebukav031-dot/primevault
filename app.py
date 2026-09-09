@@ -2248,6 +2248,16 @@ const currencySymbols = {
 
 let hidden = !savedBalanceVisible;
 
+if (savedBalanceVisible) {
+    const symbol = currencySymbols[selectedCurrency] || "$";
+    document.getElementById("balance").textContent =
+        symbol + Number(convertedBalance).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    document.getElementById("privacyBtn").textContent = "○";
+}
+
 function toggleBalance() {
     hidden = !hidden;
 
