@@ -3924,7 +3924,7 @@ body {
                     <div class="label">{% if user["language"] == "Portuguese" %}Número da Conta{% elif user["language"] == "Spanish" %}Número de Cuenta{% else %}Account Number{% endif %}</div>
                 </div>
                 <div class="value">
-                    {{ account["account_number"] }}
+                    {{ account["account_number"][2:] if account["account_number"].startswith("PV") and account["account_number"][2:].isdigit() else account["account_number"] }}
                 </div>
             </div>
 
