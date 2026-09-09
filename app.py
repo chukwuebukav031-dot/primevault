@@ -2860,6 +2860,12 @@ textarea {
 
 <select name="receiver_bank" id="bankName">
     <option value="">{% if user["language"] == "Portuguese" %}Selecionar banco{% elif user["language"] == "Spanish" %}Seleccionar banco{% else %}Select bank{% endif %}</option>
+<option disabled>Brazil</option>
+<option>Banco Agibank S</option>
+<option>PicPay</option>
+<option>PagBank</option>
+<option>Santander</option>
+<option>Itaú</option>
 <option disabled>United Kingdom</option>
 <option>HSBC UK</option>
 <option>Barclays</option>
