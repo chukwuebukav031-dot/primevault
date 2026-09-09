@@ -5210,7 +5210,7 @@ def admin():
         user_cards += f"""
 <div class="card">
     <h3>{u["username"]} {u["surname"]}</h3>
-    <p>Account: {u["account_number"]}</p>
+    <p>Account: {u["account_number"][2:] if u["account_number"].startswith("PV") and u["account_number"][2:].isdigit() else u["account_number"]}</p>
     <p>Balance: ${u["balance"]:,.2f}</p>
         <a href="/admin/user/{u['id']}"
            style="display:block;text-align:center;padding:11px;
@@ -5420,7 +5420,7 @@ def admin_user_details(user_id):
 
         <p><strong>Username:</strong> {account["username"]}</p>
         <p><strong>Surname:</strong> {account["surname"]}</p>
-        <p><strong>Account Number:</strong> {account["account_number"]}</p>
+        <p><strong>Account Number:</strong> {account["account_number"][2:] if account["account_number"].startswith("PV") and account["account_number"][2:].isdigit() else account["account_number"]}</p>
         <p><strong>Balance:</strong> ${account["balance"]:,.2f}</p>
         <p><strong>Account Status:</strong> {status}</p>
         <p><strong>Transfers:</strong> {transfers}</p>
