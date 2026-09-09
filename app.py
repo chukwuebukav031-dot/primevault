@@ -75,7 +75,7 @@ def db():
 
 
 def generate_account_number():
-    return "PV" + "".join(random.choices(string.digits, k=10))
+    return "".join(random.choices(string.digits, k=10))
 
 
 def generate_code():
@@ -318,6 +318,29 @@ def init_db():
     except Exception:
         cur.execute("ROLLBACK TO SAVEPOINT account_active_migration")
         cur.execute("RELEASE SAVEPOINT account_active_migration")
+
+    # Remove PV prefix from existing normal user account numbers.
+    try:
+        cur.execute("SAVEPOINT account_number_prefix_migration")
+        rows = cur.execute("SELECT id, account_number FROM accounts WHERE account_number LIKE 'PV%' AND LENGTH(account_number) = 12").fetchall()
+        mappings = []
+        for row in rows:
+            old_number = row["account_number"]
+            new_number = old_number[2:]
+            if len(new_number) == 10 and new_number.isdigit():
+                mappings.append((row["id"], old_number, new_number))
+        existing = {r["account_number"] for r in cur.execute("SELECT account_number FROM accounts").fetchall()}
+        for account_id, old_number, new_number in mappings:
+            if new_number in existing:
+                raise RuntimeError("Account number migration collision: " + new_number)
+        for account_id, old_number, new_number in mappings:
+            cur.execute("UPDATE accounts SET account_number = ? WHERE id = ?", (new_number, account_id))
+            cur.execute("UPDATE transactions SET sender_account = ? WHERE sender_account = ?", (new_number, old_number))
+            cur.execute("UPDATE transactions SET receiver_account = ? WHERE receiver_account = ?", (new_number, old_number))
+        cur.execute("RELEASE SAVEPOINT account_number_prefix_migration")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT account_number_prefix_migration")
+        cur.execute("RELEASE SAVEPOINT account_number_prefix_migration")
 
     conn.commit()
     conn.close()
@@ -2120,7 +2143,7 @@ body {
                     onclick="copyAccountNumber()"
                     aria-label="Copy account number"
                     style="border:0;background:transparent;cursor:pointer;font-size:18px;padding:4px;">
-                📋
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             </button>
         </div>
 
@@ -2823,7 +2846,7 @@ textarea {
     type="text"
     name="receiver_account"
     id="primeAccount"
-    placeholder="PV1234567890"
+    placeholder="1234567890"
     autocomplete="off">
 </div>
 
@@ -2837,11 +2860,24 @@ textarea {
 
 <select name="receiver_bank" id="bankName">
     <option value="">{% if user["language"] == "Portuguese" %}Selecionar banco{% elif user["language"] == "Spanish" %}Seleccionar banco{% else %}Select bank{% endif %}</option>
-    <option>Banco Agibank S</option>
-    <option>PicPay</option>
-    <option>PagBank</option>
-    <option>Santander</option>
-    <option>Itaú</option>
+<option disabled>United Kingdom</option>
+<option>HSBC UK</option>
+<option>Barclays</option>
+<option>Lloyds Bank</option>
+<option>NatWest</option>
+<option>Santander UK</option>
+<option disabled>China</option>
+<option>Industrial and Commercial Bank of China (ICBC)</option>
+<option>China Construction Bank (CCB)</option>
+<option>Agricultural Bank of China (ABC)</option>
+<option>Bank of China (BOC)</option>
+<option>Bank of Communications (BoCom)</option>
+<option disabled>United States</option>
+<option>JPMorgan Chase Bank</option>
+<option>Bank of America</option>
+<option>Wells Fargo Bank</option>
+<option>Citibank</option>
+<option>U.S. Bank</option>
 </select>
 </div>
 
