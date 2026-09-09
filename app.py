@@ -2138,7 +2138,7 @@ body {
         </div>
 
         <div class="account" style="display:flex;align-items:center;justify-content:center;gap:8px;">
-            <span>{{ d["account"] }} {{ account["account_number"] }}</span>
+            <span>{{ d["account"] }} {{ account["account_number"][2:] if account["account_number"].startswith("PV") and account["account_number"][2:].isdigit() else account["account_number"] }}</span>
             <button type="button"
                     onclick="copyAccountNumber()"
                     aria-label="Copy account number"
