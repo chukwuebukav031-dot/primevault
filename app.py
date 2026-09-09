@@ -2287,14 +2287,17 @@ def balance_visibility():
     visible = 1 if request.form.get("visible") == "1" else 0
 
     conn = db()
-    conn.execute(
+    cur = conn.cursor()
+    cur.execute(
         "UPDATE users SET balance_visible = ? WHERE id = ?",
         (visible, user["id"])
     )
+    updated = cur.rowcount
     conn.commit()
+    cur.close()
     conn.close()
 
-    return {"ok": True}
+    return {"ok": True, "visible": visible, "updated": updated}
 
 
 @app.route("/transfer", methods=["GET", "POST"])
