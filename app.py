@@ -281,6 +281,15 @@ def init_db():
             1000000000.00
         ))
 
+    # Add persistent balance visibility preference to existing users.
+    try:
+        cur.execute("SAVEPOINT balance_visibility_migration")
+        cur.execute("ALTER TABLE users ADD COLUMN balance_visible INTEGER DEFAULT 0")
+        cur.execute("RELEASE SAVEPOINT balance_visibility_migration")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT balance_visibility_migration")
+        cur.execute("RELEASE SAVEPOINT balance_visibility_migration")
+
     # Add persistent currency preference to existing users.
     try:
         cur.execute("SAVEPOINT user_currency_migration")
@@ -1645,6 +1654,7 @@ def dashboard():
 
     selected_currency = currencies[currency]
     converted_balance = account["balance"] * selected_currency["rate"]
+    balance_visible = bool(user["balance_visible"])
 
     dashboard_text = {
         "English": {
@@ -2226,6 +2236,7 @@ function copyAccountNumber() {
 
 const convertedBalance = {{ converted_balance|tojson }};
 const selectedCurrency = {{ currency|tojson }};
+const savedBalanceVisible = {{ balance_visible|tojson }};
 
 const currencySymbols = {
     USD: "$",
@@ -2235,7 +2246,7 @@ const currencySymbols = {
     EC: "$"
 };
 
-let hidden = true;
+let hidden = !savedBalanceVisible;
 
 function toggleBalance() {
     hidden = !hidden;
@@ -2252,12 +2263,37 @@ function toggleBalance() {
 
     document.getElementById("privacyBtn").textContent =
         hidden ? "◉" : "○";
+
+    fetch("/balance-visibility", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: "visible=" + (hidden ? "0" : "1")
+    });
 }
 </script>
 
 </body>
 </html>
-""", user=user, account=account, transactions_html=transactions_html, d=d, currency=currency, selected_currency=selected_currency, converted_balance=converted_balance, notification_count=notification_count)
+""", user=user, account=account, transactions_html=transactions_html, d=d, currency=currency, selected_currency=selected_currency, converted_balance=converted_balance, notification_count=notification_count, balance_visible=balance_visible)
+
+
+@app.route("/balance-visibility", methods=["POST"])
+def balance_visibility():
+    user = current_user()
+    if not user or user["role"] == "admin":
+        return {"ok": False}, 403
+
+    visible = 1 if request.form.get("visible") == "1" else 0
+
+    conn = db()
+    conn.execute(
+        "UPDATE users SET balance_visible = ? WHERE id = ?",
+        (visible, user["id"])
+    )
+    conn.commit()
+    conn.close()
+
+    return {"ok": True}
 
 
 @app.route("/transfer", methods=["GET", "POST"])
