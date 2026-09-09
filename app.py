@@ -2267,7 +2267,8 @@ function toggleBalance() {
     fetch("/balance-visibility", {
         method: "POST",
         headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: "visible=" + (hidden ? "0" : "1")
+        body: "visible=" + (hidden ? "0" : "1"),
+        keepalive: true
     });
 }
 </script>
