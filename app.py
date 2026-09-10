@@ -17,6 +17,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = "primevault-local-simulator-secret"
+app.config["SESSION_PERMANENT"] = True
+app.config["PERMANENT_SESSION_LIFETIME"] = 60 * 60 * 24 * 30
 
 DATABASE = "primevault.db"
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -4191,6 +4193,7 @@ def help_center():
 
     <form method="POST"
           action="/help"
+          id="primevault-support-form"
           enctype="multipart/form-data"
           style="margin-top:12px;">
 
