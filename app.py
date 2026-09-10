@@ -4068,6 +4068,14 @@ def help_center():
             conn.commit()
             conn.close()
 
+            if request.headers.get("X-PrimeVault-AJAX") == "1":
+                return jsonify({
+                    "ok": True,
+                    "message": message,
+                    "image_data": image_data,
+                    "created_at": now
+                })
+
         return redirect(url_for("help_center"))
 
     conn = db()
@@ -4264,6 +4272,122 @@ def help_center():
         }}
     }}
     </script>
+
+<script>
+const supportForm = document.querySelector('form[action="/help"]');
+
+if (supportForm) {{
+    supportForm.addEventListener("submit", async function(e) {{
+        e.preventDefault();
+
+        const messageInput = document.getElementById("support-message");
+        const imageInput = document.getElementById("support-image");
+        const sendButton = supportForm.querySelector('button[type="submit"]');
+        const chat = document.querySelector(".primevault-chat-window");
+
+        const message = messageInput.value.trim();
+
+        if (!message && (!imageInput.files || !imageInput.files.length)) {{
+            return;
+        }}
+
+        const formData = new FormData(supportForm);
+
+        sendButton.disabled = true;
+        sendButton.style.opacity = "0.6";
+
+        try {{
+            const response = await fetch("/help", {{
+                method: "POST",
+                body: formData,
+                headers: {{
+                    "X-PrimeVault-AJAX": "1"
+                }}
+            }});
+
+            if (!response.ok) {{
+                throw new Error("Send failed");
+            }}
+
+            const data = await response.json();
+
+            if (!data.ok) {{
+                throw new Error("Send failed");
+            }}
+
+            const empty = chat.querySelector('[data-primevault-empty]');
+            if (empty) {{
+                empty.remove();
+            }}
+
+            const row = document.createElement("div");
+            row.style.cssText =
+                "display:flex;justify-content:flex-end;align-items:flex-start;" +
+                "margin:6px 0;width:100%;box-sizing:border-box;";
+
+            const bubble = document.createElement("div");
+            bubble.style.cssText =
+                "display:table;width:auto;max-width:78%;height:auto;" +
+                "min-height:0;box-sizing:border-box;" +
+                "background:#111827;color:white;padding:7px 9px;" +
+                "position:relative;border-radius:16px 16px 4px 16px;" +
+                "overflow-wrap:anywhere;word-break:break-word;" +
+                "white-space:pre-wrap;";
+
+            if (data.message) {{
+                const text = document.createElement("div");
+                text.style.cssText =
+                    "display:block;height:auto;min-height:0;" +
+                    "margin:0;line-height:20px;";
+                text.textContent = data.message;
+                bubble.appendChild(text);
+            }}
+
+            if (data.image_data) {{
+                const image = document.createElement("img");
+                image.src = data.image_data;
+                image.alt = "Support attachment";
+                image.style.cssText =
+                    "display:block;max-width:100%;max-height:300px;" +
+                    "width:auto;height:auto;margin-top:8px;border-radius:12px;" +
+                    "cursor:zoom-in;";
+                image.onclick = function() {{
+                    openPrimeVaultPhoto(this.src);
+                }};
+                bubble.appendChild(image);
+            }}
+
+            const time = document.createElement("div");
+            time.style.cssText =
+                "display:block;text-align:right;font-size:10px;" +
+                "white-space:nowrap;line-height:13px;opacity:.65;" +
+                "margin-top:4px;";
+            time.textContent = data.created_at;
+            bubble.appendChild(time);
+
+            row.appendChild(bubble);
+            chat.appendChild(row);
+            chat.scrollTop = chat.scrollHeight;
+
+            messageInput.value = "";
+            messageInput.style.height = "42px";
+            imageInput.value = "";
+
+            const photoBox = document.getElementById("selected-photo");
+            if (photoBox) {{
+                photoBox.style.display = "none";
+                photoBox.textContent = "";
+            }}
+
+        }} catch (error) {{
+            alert("Message could not be sent. Please try again.");
+        }} finally {{
+            sendButton.disabled = false;
+            sendButton.style.opacity = "1";
+        }}
+    }});
+}}
+</script>
 </form>
 </div>
 
