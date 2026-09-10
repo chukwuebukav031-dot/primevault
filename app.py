@@ -1604,6 +1604,7 @@ def verify(user_id):
             conn.commit()
             conn.close()
 
+            session.permanent = True
             session["user_id"] = user_id
             return redirect(url_for("dashboard"))
 
