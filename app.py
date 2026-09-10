@@ -1143,6 +1143,7 @@ def login():
             if user["role"] != "admin" and user["account_active"] == 0:
                 message = "This account has been deactivated by the administrator."
             else:
+                session.permanent = True
                 session["user_id"] = user["id"]
 
                 if not user["verified"]:
