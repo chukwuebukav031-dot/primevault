@@ -3991,6 +3991,36 @@ body {
 
 
 
+@app.route("/help/messages", methods=["GET"])
+def help_messages():
+    user = current_user()
+    if not user:
+        return jsonify({"ok": False}), 401
+
+    conn = db()
+    messages = conn.execute("""
+        SELECT id, sender_role, message, image_data, created_at
+        FROM support_messages
+        WHERE user_id = ?
+        ORDER BY id ASC
+    """, (user["id"],)).fetchall()
+    conn.close()
+
+    return jsonify({
+        "ok": True,
+        "messages": [
+            {
+                "id": m["id"],
+                "sender_role": m["sender_role"],
+                "message": m["message"],
+                "image_data": m["image_data"],
+                "created_at": m["created_at"]
+            }
+            for m in messages
+        ]
+    })
+
+
 @app.route("/help", methods=["GET", "POST"])
 def help_center():
     user = current_user()
@@ -4393,6 +4423,102 @@ if (supportForm) {{
     }});
 }}
 </script>
+
+<script>
+(function() {{
+    const chat = document.querySelector(".primevault-chat-window");
+    if (!chat) return;
+
+    let lastMessageId = 0;
+
+    chat.querySelectorAll("[data-message-id]").forEach(function(el) {{
+        const id = parseInt(el.getAttribute("data-message-id"), 10);
+        if (id > lastMessageId) lastMessageId = id;
+    }});
+
+    async function checkNewSupportMessages() {{
+        try {{
+            const response = await fetch("/help/messages?_=" + Date.now(), {{
+                cache: "no-store"
+            }});
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+            if (!data.ok || !Array.isArray(data.messages)) return;
+
+            let changed = false;
+
+            data.messages.forEach(function(msg) {{
+                const id = Number(msg.id);
+
+                if (id <= lastMessageId) return;
+
+                lastMessageId = id;
+                changed = true;
+
+                if (msg.sender_role !== "admin") return;
+
+                const row = document.createElement("div");
+                row.style.cssText =
+                    "display:flex;justify-content:flex-start;align-items:flex-start;" +
+                    "margin:6px 0;width:100%;box-sizing:border-box;";
+
+                const bubble = document.createElement("div");
+                bubble.style.cssText =
+                    "display:table;width:auto;max-width:78%;height:auto;" +
+                    "min-height:0;box-sizing:border-box;" +
+                    "background:#f1f5f9;color:#111827;padding:7px 9px;" +
+                    "position:relative;border-radius:16px 16px 16px 4px;" +
+                    "overflow-wrap:anywhere;word-break:break-word;" +
+                    "white-space:pre-wrap;";
+
+                if (msg.message) {{
+                    const text = document.createElement("div");
+                    text.textContent = msg.message;
+                    text.style.cssText =
+                        "display:block;height:auto;min-height:0;" +
+                        "margin:0;line-height:20px;";
+                    bubble.appendChild(text);
+                }}
+
+                if (msg.image_data) {{
+                    const image = document.createElement("img");
+                    image.src = msg.image_data;
+                    image.alt = "Support attachment";
+                    image.style.cssText =
+                        "display:block;max-width:100%;max-height:300px;" +
+                        "width:auto;height:auto;margin-top:8px;border-radius:12px;" +
+                        "cursor:zoom-in;";
+                    image.onclick = function() {{
+                        openPrimeVaultPhoto(this.src);
+                    }};
+                    bubble.appendChild(image);
+                }}
+
+                const time = document.createElement("div");
+                time.textContent = msg.created_at;
+                time.style.cssText =
+                    "display:block;text-align:right;font-size:10px;" +
+                    "white-space:nowrap;line-height:13px;color:#64748b;" +
+                    "margin-top:4px;";
+                bubble.appendChild(time);
+
+                row.appendChild(bubble);
+                chat.appendChild(row);
+            }});
+
+            if (changed) {{
+                chat.scrollTop = chat.scrollHeight;
+            }}
+        }} catch (error) {{
+            // Silent retry. Do not interrupt the chat.
+        }}
+    }}
+
+    setInterval(checkNewSupportMessages, 3000);
+}})();
+</script>
 </form>
 </div>
 
@@ -4465,6 +4591,36 @@ def delete_support_message(message_id):
         ))
 
     return redirect(url_for("help_center"))
+
+@app.route("/admin/support/messages/<int:user_id>", methods=["GET"])
+def admin_support_messages(user_id):
+    admin = current_user()
+    if not admin or admin["role"] != "admin":
+        return jsonify({"ok": False}), 401
+
+    conn = db()
+    messages = conn.execute("""
+        SELECT id, sender_role, message, image_data, created_at
+        FROM support_messages
+        WHERE user_id = ?
+        ORDER BY id ASC
+    """, (user_id,)).fetchall()
+    conn.close()
+
+    return jsonify({
+        "ok": True,
+        "messages": [
+            {
+                "id": m["id"],
+                "sender_role": m["sender_role"],
+                "message": m["message"],
+                "image_data": m["image_data"],
+                "created_at": m["created_at"]
+            }
+            for m in messages
+        ]
+    })
+
 
 @app.route("/admin/support")
 def admin_support():
@@ -4756,6 +4912,104 @@ def admin_support():
                         }}
                     }}
                 }});
+            }})();
+            </script>
+
+            <script>
+            (function() {{
+                const chat = document.querySelector(".primevault-chat-window");
+                if (!chat) return;
+
+                let lastMessageId = 0;
+
+                chat.querySelectorAll("[data-message-id]").forEach(function(el) {{
+                    const id = parseInt(el.getAttribute("data-message-id"), 10);
+                    if (id > lastMessageId) lastMessageId = id;
+                }});
+
+                async function checkAdminSupportMessages() {{
+                    try {{
+                        const response = await fetch(
+                            "/admin/support/messages/{selected_user["id"]}?_=" + Date.now(),
+                            {{cache: "no-store"}}
+                        );
+
+                        if (!response.ok) return;
+
+                        const data = await response.json();
+                        if (!data.ok || !Array.isArray(data.messages)) return;
+
+                        let changed = false;
+
+                        data.messages.forEach(function(msg) {{
+                            const id = Number(msg.id);
+
+                            if (id <= lastMessageId) return;
+
+                            lastMessageId = id;
+
+                            if (msg.sender_role !== "user") return;
+
+                            changed = true;
+
+                            const row = document.createElement("div");
+                            row.style.cssText =
+                                "display:flex;justify-content:flex-start;" +
+                                "align-items:flex-start;margin:6px 0;" +
+                                "width:100%;box-sizing:border-box;";
+
+                            const bubble = document.createElement("div");
+                            bubble.style.cssText =
+                                "display:table;width:auto;max-width:78%;" +
+                                "height:auto;min-height:0;box-sizing:border-box;" +
+                                "background:#f1f5f9;color:#111827;" +
+                                "padding:7px 9px;position:relative;" +
+                                "border-radius:16px 16px 16px 4px;" +
+                                "overflow-wrap:anywhere;word-break:break-word;" +
+                                "white-space:pre-wrap;";
+
+                            if (msg.message) {{
+                                const text = document.createElement("div");
+                                text.textContent = msg.message;
+                                text.style.cssText =
+                                    "display:block;margin:0;line-height:20px;";
+                                bubble.appendChild(text);
+                            }}
+
+                            if (msg.image_data) {{
+                                const image = document.createElement("img");
+                                image.src = msg.image_data;
+                                image.alt = "Support attachment";
+                                image.style.cssText =
+                                    "display:block;max-width:100%;max-height:300px;" +
+                                    "width:auto;height:auto;margin-top:8px;" +
+                                    "border-radius:12px;cursor:zoom-in;";
+                                image.onclick = function() {{
+                                    openPrimeVaultPhoto(this.src);
+                                }};
+                                bubble.appendChild(image);
+                            }}
+
+                            const time = document.createElement("small");
+                            time.textContent = msg.created_at || "";
+                            time.style.cssText =
+                                "display:block;text-align:right;font-size:10px;" +
+                                "color:#64748b;margin-top:4px;";
+                            bubble.appendChild(time);
+
+                            row.appendChild(bubble);
+                            chat.appendChild(row);
+                        }});
+
+                        if (changed) {{
+                            chat.scrollTop = chat.scrollHeight;
+                        }}
+                    }} catch (error) {{
+                        // Keep checking silently.
+                    }}
+                }}
+
+                setInterval(checkAdminSupportMessages, 3000);
             }})();
             </script>
         </div>
