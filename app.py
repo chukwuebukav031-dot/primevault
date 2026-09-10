@@ -1,5 +1,5 @@
 import secrets
-from flask import Flask, request, redirect, url_for, session, render_template_string, send_file
+from flask import Flask, request, redirect, url_for, session, render_template_string, send_file, jsonify
 import sqlite3
 import os
 import random
