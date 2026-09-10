@@ -4665,6 +4665,97 @@ def admin_support():
 
                 </div>
             </form>
+
+            <script>
+            (function() {{
+                const form = document.querySelector('form[action="/admin/support/reply/{selected_user["id"]}"]');
+                if (!form) return;
+
+                form.addEventListener("submit", async function(e) {{
+                    e.preventDefault();
+
+                    const button = form.querySelector('button[type="submit"]');
+                    const textarea = form.querySelector('textarea[name="message"]');
+                    const imageInput = form.querySelector('input[name="image"]');
+
+                    const message = textarea.value.trim();
+                    const hasImage = imageInput && imageInput.files && imageInput.files.length > 0;
+
+                    if (!message && !hasImage) return;
+
+                    const formData = new FormData(form);
+
+                    if (button) {{
+                        button.disabled = true;
+                        button.style.opacity = "0.6";
+                    }}
+
+                    try {{
+                        const response = await fetch(form.action, {{
+                            method: "POST",
+                            body: formData,
+                            headers: {{
+                                "X-PrimeVault-AJAX": "1"
+                            }}
+                        }});
+
+                        const data = await response.json();
+
+                        if (!data.ok) {{
+                            throw new Error("Message was not sent.");
+                        }}
+
+                        const chat = form.parentElement.querySelector(".primevault-chat-window");
+
+                        if (chat) {{
+                            const wrapper = document.createElement("div");
+                            wrapper.style.cssText =
+                                "display:flex;justify-content:flex-end;align-items:flex-start;margin:6px 0;width:100%;box-sizing:border-box;";
+
+                            const bubble = document.createElement("div");
+                            bubble.style.cssText =
+                                "display:table;width:auto;max-width:78%;height:auto;min-height:0;box-sizing:border-box;text-align:left;background:#111827;color:white;padding:7px 9px;position:relative;border-radius:16px 16px 4px 16px;overflow-wrap:anywhere;word-break:break-word;white-space:pre-wrap;";
+
+                            if (data.message) {{
+                                const text = document.createElement("div");
+                                text.textContent = data.message;
+                                bubble.appendChild(text);
+                            }}
+
+                            if (data.image_data) {{
+                                const img = document.createElement("img");
+                                img.src = data.image_data;
+                                img.style.cssText =
+                                    "display:block;max-width:220px;max-height:220px;margin-top:6px;border-radius:12px;object-fit:cover;";
+                                bubble.appendChild(img);
+                            }}
+
+                            const time = document.createElement("small");
+                            time.textContent = data.created_at || "";
+                            time.style.opacity = "0.65";
+                            time.style.display = "block";
+                            time.style.marginTop = "3px";
+                            bubble.appendChild(time);
+
+                            wrapper.appendChild(bubble);
+                            chat.appendChild(wrapper);
+                            chat.scrollTop = chat.scrollHeight;
+                        }}
+
+                        textarea.value = "";
+                        if (imageInput) imageInput.value = "";
+
+                    }} catch (error) {{
+                        alert("Message could not be sent. Please try again.");
+                    }} finally {{
+                        if (button) {{
+                            button.disabled = false;
+                            button.style.opacity = "1";
+                        }}
+                    }}
+                }});
+            }})();
+            </script>
         </div>
         """
 
