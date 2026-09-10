@@ -4861,6 +4861,14 @@ def admin_support_reply(user_id):
 
         conn.close()
 
+    if request.headers.get("X-PrimeVault-AJAX") == "1":
+        return jsonify({
+            "ok": True,
+            "message": message,
+            "image_data": image_data,
+            "created_at": now if (message or image_data) and exists else ""
+        })
+
     return redirect(url_for("admin_support", user_id=user_id))
 
 
