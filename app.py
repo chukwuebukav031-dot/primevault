@@ -2251,7 +2251,6 @@ function copyAccountNumber() {
 
     if (navigator.clipboard) {
         navigator.clipboard.writeText(accountNumber).then(() => {
-            alert("Account number copied.");
         }).catch(() => {
             alert("Unable to copy account number.");
         });
