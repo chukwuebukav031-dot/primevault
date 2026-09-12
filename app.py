@@ -1572,7 +1572,6 @@ def created():
 
     <p class="small">
         This code is displayed for verification.
-        No real email is sent.
     </p>
 
     <a href="{url_for('verify', user_id=user_id)}">
@@ -2983,7 +2982,7 @@ textarea {
 
 <div class="notice">
     {% if user["language"] == "Portuguese" %}🔒 PrimeVault é um serviço bancário seguro.{% elif user["language"] == "Spanish" %}🔒 PrimeVault es un servicio bancario seguro.{% else %}🔒 PrimeVault is a secure banking service.{% endif %}
-    {% if user["language"] == "Portuguese" %} Nenhum banco real ou rede de pagamentos está conectado.{% elif user["language"] == "Spanish" %} No hay ningún banco real ni red de pagos conectada.{% else %} No real bank or payment network is connected.{% endif %}
+
 </div>
 
 </div>
