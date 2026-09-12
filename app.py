@@ -1643,7 +1643,7 @@ def dashboard():
     recent = conn.execute("""
         SELECT * FROM transactions
         WHERE sender_user_id = ? OR receiver_user_id = ?
-        ORDER BY id ASC
+        ORDER BY id DESC
         LIMIT 3
     """, (user["id"], user["id"])).fetchall()
 
@@ -3488,7 +3488,7 @@ def transactions():
     rows = conn.execute("""
         SELECT * FROM transactions
         WHERE sender_user_id = ? OR receiver_user_id = ?
-        ORDER BY id ASC
+        ORDER BY id DESC
     """, (user["id"], user["id"])).fetchall()
     conn.close()
 
