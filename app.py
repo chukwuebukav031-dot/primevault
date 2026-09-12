@@ -2247,7 +2247,12 @@ body {
 
 <script>
 function copyAccountNumber() {
-    const accountNumber = {{ account["account_number"]|tojson }};
+    const rawAccountNumber = {{ account["account_number"]|tojson }};
+    const accountNumber =
+        rawAccountNumber.startsWith("PV") &&
+        /^\\d{10}$/.test(rawAccountNumber.slice(2))
+            ? rawAccountNumber.slice(2)
+            : rawAccountNumber;
 
     if (navigator.clipboard) {
         navigator.clipboard.writeText(accountNumber).then(() => {
@@ -2474,7 +2479,7 @@ def transfer():
             receiver_name = f'{receiver["username"]} {receiver["surname"]}'
             receiver_bank = receiver["bank_name"]
 
-            receiver_user_id = receiver["id"]
+            receiver_user_id = None if transfers_blocked else receiver["id"]
 
             if not transfers_blocked:
                 conn.execute("""
@@ -2849,7 +2854,10 @@ textarea {
     name="receiver_account"
     id="primeAccount"
     placeholder="1234567890"
-    autocomplete="off">
+    autocomplete="off"
+    inputmode="numeric"
+    maxlength="10"
+    pattern="[0-9]{10}">
 </div>
 
 </div>
