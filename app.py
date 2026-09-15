@@ -1145,19 +1145,16 @@ def login():
         conn.close()
 
         if user and check_password_hash(user["password"], password):
-            if user["role"] != "admin" and user["account_active"] == 0:
-                message = "This account has been deactivated by the administrator."
-            else:
-                session.permanent = True
-                session["user_id"] = user["id"]
+            session.permanent = True
+            session["user_id"] = user["id"]
 
-                if not user["verified"]:
-                    return redirect(url_for("verify", user_id=user["id"]))
+            if not user["verified"]:
+                return redirect(url_for("verify", user_id=user["id"]))
 
-                if user["role"] == "admin":
-                    return redirect(url_for("admin"))
+            if user["role"] == "admin":
+                return redirect(url_for("admin"))
 
-                return redirect(url_for("dashboard"))
+            return redirect(url_for("dashboard"))
 
         message = "Invalid login details."
 
