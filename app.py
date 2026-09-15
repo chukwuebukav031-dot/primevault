@@ -414,6 +414,9 @@ TRANSLATIONS = {
         "done": "Done",
         "close": "Close",
         "welcome": "Welcome",
+        "username_email_phone": "Username, email or phone",
+        "forgot_password": "Forgot password?",
+        "new_user": "New user?",
         "verification": "Verification",
         "verification_code": "Verification Code",
         "continue": "Continue",
@@ -470,6 +473,9 @@ TRANSLATIONS = {
         "done": "Concluído",
         "close": "Fechar",
         "welcome": "Bem-vindo",
+        "username_email_phone": "Nome de usuário, e-mail ou telefone",
+        "forgot_password": "Esqueceu a senha?",
+        "new_user": "Novo usuário?",
         "verification": "Verificação",
         "verification_code": "Código de Verificação",
         "continue": "Continuar",
@@ -526,6 +532,9 @@ TRANSLATIONS = {
         "done": "Listo",
         "close": "Cerrar",
         "welcome": "Bienvenido",
+        "username_email_phone": "Usuario, correo electrónico o teléfono",
+        "forgot_password": "¿Olvidaste tu contraseña?",
+        "new_user": "¿Nuevo usuario?",
         "verification": "Verificación",
         "verification_code": "Código de Verificación",
         "continue": "Continuar",
@@ -1152,18 +1161,22 @@ def login():
 
         message = "Invalid login details."
 
+    user = current_user()
+    language = user["language"] if user else "English"
+    translations = TRANSLATIONS.get(language, TRANSLATIONS["English"])
+
     return page("Login", f"""
 <div class="card">
-    <h2>Welcome to PrimeVault</h2>
+    <h2>{translations["welcome"]} to PrimeVault</h2>
 
     {f'<div class="danger">{message}</div>' if message else ''}
 
     <form method="POST">
 
-        <label>Username, email or phone</label>
+        <label>{translations["username_email_phone"]}</label>
         <input name="identifier" required>
 
-        <label>Password</label>
+        <label>{translations["password"]}</label>
 
         <div style="position:relative;width:100%;">
             <input id="loginPassword"
@@ -1212,17 +1225,17 @@ def login():
                style="color:#2563eb;
                       text-decoration:none;
                       font-weight:700;">
-                Forgot password?
+                {translations["forgot_password"]}
             </a>
         </div>
 
-        <button type="submit">Login</button>
+        <button type="submit">{translations["login"]}</button>
 
     </form>
 
     <p>
-        New user?
-        <a href="{url_for('register')}">Create an account</a>
+        {translations["new_user"]}
+        <a href="{url_for('register')}">{translations["create_account"]}</a>
     </p>
 </div>
 
@@ -1694,7 +1707,10 @@ def dashboard():
             "transfer_sent": "Transfer sent",
             "money_received": "Money received",
             "no_transactions": "No transactions yet",
-            "recent_activity": "Your recent activity will appear here."
+            "recent_activity": "Your recent activity will appear here.",
+            "blocked": "ACCOUNT BLOCKED",
+            "home": "Home",
+            "help_center": "Help Center"
         },
         "Portuguese": {
             "greeting": "Bom dia",
@@ -1711,7 +1727,10 @@ def dashboard():
             "transfer_sent": "Transferência enviada",
             "money_received": "Dinheiro recebido",
             "no_transactions": "Nenhuma transação ainda",
-            "recent_activity": "Sua atividade recente aparecerá aqui."
+            "recent_activity": "Sua atividade recente aparecerá aqui.",
+            "blocked": "CONTA BLOQUEADA",
+            "home": "Início",
+            "help_center": "Central de Ajuda"
         },
         "Spanish": {
             "greeting": "Buenos días",
@@ -1728,7 +1747,10 @@ def dashboard():
             "transfer_sent": "Transferencia enviada",
             "money_received": "Dinero recibido",
             "no_transactions": "Aún no hay transacciones",
-            "recent_activity": "Tu actividad reciente aparecerá aquí."
+            "recent_activity": "Tu actividad reciente aparecerá aquí.",
+            "blocked": "CUENTA BLOQUEADA",
+            "home": "Inicio",
+            "help_center": "Centro de Ayuda"
         }
     }
 
@@ -2122,7 +2144,7 @@ body {
     <div class="balance-card">
         {% if not user["account_active"] %}
         <div style="text-align:center;color:#dc2626;font-size:15px;font-weight:900;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px;">
-            ACCOUNT BLOCKED
+            {{ d["blocked"] }}
         </div>
         {% endif %}
         <div class="balance-label">{{ d["balance"] }}</div>
@@ -2206,7 +2228,7 @@ body {
 
 </div>
 
-<a href="/help" class="help-floating" aria-label="Help Center" title="Help Center">
+<a href="/help" class="help-floating" aria-label="{{ d['help_center'] }}" title="{{ d['help_center'] }}">
     <span style="display:flex;align-items:center;justify-content:center;
                  width:52px;height:52px;border-radius:50%;
                  background:#2563eb;color:white;
@@ -2226,12 +2248,12 @@ body {
 
     <a class="active" href="/dashboard">
         <span class="bottom-icon">⌂</span>
-        Home
+        {{ d["home"] }}
     </a>
 
     <a href="/transfer">
         <span class="bottom-icon">↗</span>
-        Transfer
+        {{ d["transfer"] }}
     </a>
 
     <a href="/transactions">
@@ -2241,7 +2263,7 @@ body {
 
     <a href="/profile">
         <span class="bottom-icon">♙</span>
-        Profile
+        {{ d["profile"] }}
     </a>
 
 </div>
@@ -2816,14 +2838,14 @@ textarea {
         class="tab active"
         id="primeTab"
         onclick="showPrimeVault()">
-    PrimeVault
+    {% if user["language"] == "Portuguese" %}PrimeVault{% elif user["language"] == "Spanish" %}PrimeVault{% else %}PrimeVault{% endif %}
 </button>
 
 <button type="button"
         class="tab"
         id="bankTab"
         onclick="showOtherBank()">
-    Other Bank
+    {% if user["language"] == "Portuguese" %}Outro Banco{% elif user["language"] == "Spanish" %}Otro Banco{% else %}Other Bank{% endif %}
 </button>
 
 </div>
@@ -2832,11 +2854,11 @@ textarea {
 <div class="card">
 
 <div class="form-title">
-    Transfer Details
+    {% if user["language"] == "Portuguese" %}Detalhes da Transferência{% elif user["language"] == "Spanish" %}Detalles de la Transferencia{% else %}Transfer Details{% endif %}
 </div>
 
 <div class="form-subtitle">
-    Choose where you want the funds to go.
+    {% if user["language"] == "Portuguese" %}Escolha para onde deseja enviar os fundos.{% elif user["language"] == "Spanish" %}Elige dónde quieres enviar los fondos.{% else %}Choose where you want the funds to go.{% endif %}
 </div>
 
 {% if transfer_error %}
@@ -2848,7 +2870,7 @@ textarea {
 <div id="primeFields">
 
 <div class="field">
-<label>PrimeVault Account Number</label>
+<label>{% if user["language"] == "Portuguese" %}Número da Conta PrimeVault{% elif user["language"] == "Spanish" %}Número de Cuenta PrimeVault{% else %}PrimeVault Account Number{% endif %}</label>
 
 <input
     type="text"
@@ -2984,7 +3006,7 @@ textarea {
 
 
 <button class="transfer-btn" type="submit">
-    Transfer Money
+    {% if user["language"] == "Portuguese" %}Transferir Dinheiro{% elif user["language"] == "Spanish" %}Transferir Dinero{% else %}Transfer Money{% endif %}
 </button>
 
 
