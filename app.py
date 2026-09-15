@@ -360,10 +360,6 @@ def current_user():
     """, (session["user_id"],)).fetchone()
     conn.close()
 
-    if user and user["role"] != "admin" and user["account_active"] == 0:
-        session.pop("user_id", None)
-        return None
-
     return user
 
 
@@ -2124,6 +2120,11 @@ body {
     </div>
 
     <div class="balance-card">
+        {% if not user["account_active"] %}
+        <div style="text-align:center;color:#dc2626;font-size:15px;font-weight:900;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px;">
+            ACCOUNT BLOCKED
+        </div>
+        {% endif %}
         <div class="balance-label">{{ d["balance"] }}</div>
 
         <div class="balance-row">
