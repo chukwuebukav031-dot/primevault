@@ -5930,6 +5930,19 @@ def admin_user_details(user_id):
         <p><strong>Surname:</strong> {account["surname"]}</p>
         <p><strong>Account Number:</strong> {account["account_number"][2:] if account["account_number"].startswith("PV") and account["account_number"][2:].isdigit() else account["account_number"]}</p>
         <p><strong>Balance:</strong> ${account["balance"]:,.2f}</p>
+
+        <form method="POST"
+              action="/admin/set-balance/{account['id']}"
+              style="margin-top:10px;">
+            <input type="number"
+                   name="balance"
+                   min="0"
+                   step="0.01"
+                   placeholder="Enter new balance"
+                   required>
+            <button type="submit">Set User Balance</button>
+        </form>
+
         <p><strong>Account Status:</strong> {status}</p>
         <p><strong>Transfers:</strong> {transfers}</p>
         <p><strong>Account Limit:</strong> ${account["account_limit"]:,.2f}</p>
@@ -6016,6 +6029,35 @@ def set_account_limit(user_id):
         WHERE user_id = ?
         """,
         (new_limit, user_id)
+    )
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("admin_user_details", user_id=user_id))
+
+
+@app.route("/admin/set-balance/<int:user_id>", methods=["POST"])
+def set_user_balance(user_id):
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+
+    try:
+        new_balance = float(request.form.get("balance", "0"))
+    except (ValueError, TypeError):
+        return redirect(url_for("admin_user_details", user_id=user_id))
+
+    if new_balance < 0:
+        return redirect(url_for("admin_user_details", user_id=user_id))
+
+    conn = db()
+    conn.execute(
+        """
+        UPDATE accounts
+        SET balance = ?
+        WHERE user_id = ?
+        """,
+        (new_balance, user_id)
     )
     conn.commit()
     conn.close()
