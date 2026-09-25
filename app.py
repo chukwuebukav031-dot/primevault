@@ -312,6 +312,16 @@ def init_db():
         cur.execute("ROLLBACK TO SAVEPOINT transaction_currency_migration")
         cur.execute("RELEASE SAVEPOINT transaction_currency_migration")
 
+    # Add scheduled account blocking support to older databases.
+    try:
+        cur.execute("SAVEPOINT scheduled_block_migration")
+        cur.execute("ALTER TABLE accounts ADD COLUMN block_scheduled_at TEXT")
+        cur.execute("ALTER TABLE accounts ADD COLUMN block_pending INTEGER DEFAULT 0")
+        cur.execute("RELEASE SAVEPOINT scheduled_block_migration")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT scheduled_block_migration")
+        cur.execute("RELEASE SAVEPOINT scheduled_block_migration")
+
     # Add account activation support to older databases.
     try:
         cur.execute("SAVEPOINT account_active_migration")
@@ -353,13 +363,46 @@ def current_user():
 
     conn = db()
     user = conn.execute("""
-        SELECT u.*, a.active AS account_active
+        SELECT u.*, a.active AS account_active,
+               a.block_scheduled_at, a.block_pending
         FROM users u
         LEFT JOIN accounts a ON a.user_id = u.id
         WHERE u.id = ?
     """, (session["user_id"],)).fetchone()
-    conn.close()
 
+    # Enforce a scheduled account block when its time has arrived.
+    if user and user["role"] != "admin" and user["block_pending"] and user["block_scheduled_at"]:
+        try:
+            from datetime import datetime, timezone
+
+            scheduled_at = datetime.fromisoformat(
+                user["block_scheduled_at"].replace("Z", "+00:00")
+            )
+
+            if scheduled_at.tzinfo is None:
+                scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
+
+            if scheduled_at <= datetime.now(timezone.utc):
+                conn.execute("""
+                    UPDATE accounts
+                    SET active = 0,
+                        block_pending = 0,
+                        block_scheduled_at = NULL
+                    WHERE user_id = ?
+                """, (session["user_id"],))
+                conn.commit()
+
+                user = conn.execute("""
+                    SELECT u.*, a.active AS account_active,
+                           a.block_scheduled_at, a.block_pending
+                    FROM users u
+                    LEFT JOIN accounts a ON a.user_id = u.id
+                    WHERE u.id = ?
+                """, (session["user_id"],)).fetchone()
+        except (ValueError, TypeError):
+            pass
+
+    conn.close()
     return user
 
 
@@ -2138,7 +2181,23 @@ body {
         </div>
     </div>
 
-    <div class="balance-card">
+    <div id="scheduledBlockCountdown" style="display:none;text-align:center;color:#d97706;font-size:14px;font-weight:800;margin:0 0 12px;"></div>
+<script>
+(function(){
+  const el=document.getElementById("scheduledBlockCountdown");
+  const target="{{ account["block_scheduled_at"] if account["block_pending"] and account["block_scheduled_at"] else "" }}";
+  if(!target) return;
+  el.style.display="block";
+  function update(){
+    const diff=new Date(target).getTime()-Date.now();
+    if(diff<=0){el.textContent="ACCOUNT BLOCKING...";setTimeout(function(){location.reload();},1000);return;}
+    const total=Math.floor(diff/1000),d=Math.floor(total/86400),h=Math.floor((total%86400)/3600),m=Math.floor((total%3600)/60),sec=total%60;
+    el.textContent="ACCOUNT WILL BE BLOCKED IN: "+(d?d+"d ":"")+(h?String(h).padStart(2,"0")+"h ":"")+String(m).padStart(2,"0")+"m "+String(sec).padStart(2,"0")+"s";
+  }
+  update();setInterval(update,1000);
+})();
+</script>
+<div class="balance-card">
         {% if not user["account_active"] %}
         <div style="text-align:center;color:#dc2626;font-size:15px;font-weight:900;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px;">
             {{ d["blocked"] }}
@@ -5665,7 +5724,7 @@ def admin():
         users = conn.execute(
             """
             SELECT u.*, a.account_number, a.balance,
-                   a.transfer_enabled, a.active, a.account_limit
+                   a.transfer_enabled, a.active, a.account_limit, a.block_scheduled_at, a.block_pending
             FROM users u
             JOIN accounts a ON a.user_id = u.id
             WHERE u.role = 'user'
@@ -5890,6 +5949,61 @@ function copyRegistrationLink() {{
     return page("Admin Panel", html)
 
 
+@app.route("/admin/schedule-block/<int:user_id>", methods=["POST"])
+def schedule_block(user_id):
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+
+    scheduled_value = request.form.get("block_scheduled_at", "").strip()
+    if not scheduled_value:
+        return redirect(url_for("admin_user_details", user_id=user_id))
+
+    try:
+        from datetime import datetime, timezone
+
+        scheduled_at = datetime.fromisoformat(scheduled_value)
+        local_tz = datetime.now().astimezone().tzinfo
+        scheduled_at = scheduled_at.replace(tzinfo=local_tz).astimezone(timezone.utc)
+
+        if scheduled_at <= datetime.now(timezone.utc):
+            return redirect(url_for("admin_user_details", user_id=user_id))
+
+        conn = db()
+        conn.execute("""
+            UPDATE accounts
+            SET block_scheduled_at = ?,
+                block_pending = 1
+            WHERE user_id = ?
+        """, (scheduled_at.isoformat(), user_id))
+        conn.commit()
+        conn.close()
+
+    except (ValueError, TypeError):
+        pass
+
+    return redirect(url_for("admin_user_details", user_id=user_id))
+
+
+@app.route("/admin/cancel-scheduled-block/<int:user_id>", methods=["POST"])
+def cancel_scheduled_block(user_id):
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+
+    conn = db()
+    conn.execute("""
+        UPDATE accounts
+        SET block_scheduled_at = NULL,
+            block_pending = 0
+        WHERE user_id = ?
+    """, (user_id,))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("admin_user_details", user_id=user_id))
+
+
 @app.route("/admin/user/<int:user_id>")
 def admin_user_details(user_id):
     user = current_user()
@@ -5900,7 +6014,7 @@ def admin_user_details(user_id):
     account = conn.execute(
         """
         SELECT u.*, a.account_number, a.balance,
-               a.transfer_enabled, a.active, a.account_limit
+               a.transfer_enabled, a.active, a.account_limit, a.block_scheduled_at, a.block_pending
         FROM users u
         JOIN accounts a ON a.user_id = u.id
         WHERE u.id = ? AND u.role = 'user'
@@ -5945,6 +6059,39 @@ def admin_user_details(user_id):
 
         <p><strong>Account Status:</strong> {status}</p>
         <p><strong>Transfers:</strong> {transfers}</p>
+
+        <hr style="margin:20px 0;border:0;border-top:1px solid #e5e7eb;">
+
+        <h3>Account Block Schedule</h3>
+        <p class="small">
+            Schedule this account to become blocked at a specific date and time.
+        </p>
+
+        <form method="POST"
+              action="/admin/schedule-block/{account['id']}">
+            <input type="datetime-local"
+                   name="block_scheduled_at"
+                   required>
+            <button type="submit"
+                    style="background:#d97706;font-weight:800;">
+                Schedule Block
+            </button>
+        </form>
+
+        <div style="margin-top:12px;">
+            <strong>Scheduled block:</strong>
+            {account["block_scheduled_at"] if account["block_pending"] and account["block_scheduled_at"] else "None"}
+        </div>
+
+        <form method="POST"
+              action="/admin/cancel-scheduled-block/{account['id']}"
+              style="margin-top:10px;">
+            <button type="submit"
+                    style="background:#6b7280;font-weight:800;">
+                Cancel Scheduled Block
+            </button>
+        </form>
+
         <p><strong>Account Limit:</strong> ${account["account_limit"]:,.2f}</p>
 
         <form method="POST"
@@ -6080,7 +6227,7 @@ def toggle_active(user_id):
     if account:
         new_value = 0 if account["active"] else 1
         conn.execute(
-            "UPDATE accounts SET active = ? WHERE user_id = ?",
+            "UPDATE accounts SET active = ?, block_pending = 0, block_scheduled_at = NULL WHERE user_id = ?",
             (new_value, user_id)
         )
         conn.commit()
