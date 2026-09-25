@@ -2580,7 +2580,7 @@ def transfer():
                 session["transfer_error"] = "Complete the receiver details."
                 return redirect(url_for("transfer", mode="bank"))
 
-            if not receiver_account.isdigit() or len(receiver_account) != 11:
+            if not receiver_account.isdigit() or len(receiver_account) > 11:
                 conn.close()
                 session["transfer_error"] = "Other Bank account number must be exactly 11 digits."
                 return redirect(url_for("transfer", mode="bank"))
@@ -2990,7 +2990,7 @@ textarea {
     autocomplete="off"
     inputmode="numeric"
     maxlength="11"
-    pattern="[0-9]{11}"
+    pattern="[0-9]{1,11}"
     required>
 </div>
 
