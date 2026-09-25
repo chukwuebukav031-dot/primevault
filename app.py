@@ -2955,6 +2955,8 @@ textarea {
 <option>PagBank</option>
 <option>Santander</option>
 <option>Itaú</option>
+<option>Nubank</option>
+<option>Caixa</option>
 <option disabled>United Kingdom</option>
 <option>HSBC UK</option>
 <option>Barclays</option>
