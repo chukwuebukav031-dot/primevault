@@ -4846,7 +4846,26 @@ def admin_support():
     if selected_user:
         selected_card = f"""
         <div class="card">
-            <h3>💬 Chat with {selected_user["username"]} {selected_user["surname"]}</h3>
+            <div style="display:flex;align-items:center;
+                        justify-content:space-between;gap:12px;">
+                <h3 style="margin:0;">
+                    💬 Chat with {selected_user["username"]} {selected_user["surname"]}
+                </h3>
+
+                <form method="POST"
+                      action="/admin/support/clear/{selected_user["id"]}"
+                      onsubmit="return confirm('Are you sure you want to clear this chat? This will also clear it for the customer.');"
+                      style="margin:0;flex:0 0 auto;">
+                    <button type="submit"
+                            style="background:#fee2e2;color:#b91c1c;
+                                   border:1px solid #fecaca;
+                                   padding:8px 12px;border-radius:10px;
+                                   cursor:pointer;font-weight:700;
+                                   white-space:nowrap;">
+                        🗑️ Clear Chat
+                    </button>
+                </form>
+            </div>
 
             <p style="color:#64748b;">
                 {selected_user["email"]}<br>
@@ -5126,6 +5145,39 @@ def admin_support():
     </a>
 </div>
 """)
+
+
+@app.route("/admin/support/clear/<int:user_id>", methods=["POST"])
+def admin_clear_support_chat(user_id):
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+
+    conn = db()
+
+    exists = conn.execute("""
+        SELECT id
+        FROM users
+        WHERE id = ? AND role = 'user'
+    """, (user_id,)).fetchone()
+
+    if exists:
+        conn.execute("""
+            DELETE FROM support_messages
+            WHERE user_id = ?
+        """, (user_id,))
+
+        conn.execute("""
+            DELETE FROM notifications
+            WHERE user_id = ?
+              AND support_user_id = ?
+        """, (user_id, user["id"]))
+
+        conn.commit()
+
+    conn.close()
+
+    return redirect(url_for("admin_support"))
 
 
 @app.route("/admin/support/reply/<int:user_id>", methods=["POST"])
