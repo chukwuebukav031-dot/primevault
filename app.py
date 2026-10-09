@@ -3400,30 +3400,6 @@ body {
 <div class="section">
 
 <div class="section-title">
-{% if user["language"] == "Portuguese" %}DETALHES DA TRANSAÇÃO{% elif user["language"] == "Spanish" %}DETALLES DE LA TRANSACCIÓN{% else %}TRANSACTION DETAILS{% endif %}
-</div>
-
-<div class="detail-card">
-
-<div class="row">
-    <div class="label">{% if user["language"] == "Portuguese" %}ID da Transação{% elif user["language"] == "Spanish" %}ID de Transacción{% else %}Transaction ID{% endif %}</div>
-    <div class="value">{{ tx["transaction_id"] }}</div>
-</div>
-
-<div class="row">
-    <div class="label">{% if user["language"] == "Portuguese" %}Data e Hora{% elif user["language"] == "Spanish" %}Fecha y Hora{% else %}Date & Time{% endif %}</div>
-    <div class="value">{{ tx["created_at"] }}</div>
-</div>
-
-<div class="row">
-    <div class="label">Status</div>
-    <div class="value status{% if tx["status"] == "Failed" %} failed{% endif %}">{% if tx["status"] == "Failed" %}{% if user["language"] == "Portuguese" %}Falhou{% elif user["language"] == "Spanish" %}Fallido{% else %}Failed{% endif %}{% else %}{% if user["language"] == "Portuguese" %}Sucesso{% elif user["language"] == "Spanish" %}Exitoso{% else %}Successful{% endif %}{% endif %}</div>
-</div>
-
-</div>
-
-
-<div class="section-title">
 {% if user["language"] == "Portuguese" %}REMETENTE{% elif user["language"] == "Spanish" %}REMITENTE{% else %}SENDER{% endif %}
 </div>
 
@@ -3445,7 +3421,6 @@ body {
 </div>
 
 </div>
-
 
 <div class="section-title">
 {% if user["language"] == "Portuguese" %}DESTINATÁRIO{% elif user["language"] == "Spanish" %}DESTINATARIO{% else %}RECEIVER{% endif %}
@@ -3470,6 +3445,28 @@ body {
 
 </div>
 
+<div class="section-title">
+{% if user["language"] == "Portuguese" %}DETALHES DA TRANSAÇÃO{% elif user["language"] == "Spanish" %}DETALLES DE LA TRANSACCIÓN{% else %}TRANSACTION DETAILS{% endif %}
+</div>
+
+<div class="detail-card">
+
+<div class="row">
+    <div class="label">{% if user["language"] == "Portuguese" %}ID da Transação{% elif user["language"] == "Spanish" %}ID de Transacción{% else %}Transaction ID{% endif %}</div>
+    <div class="value">{{ tx["transaction_id"] }}</div>
+</div>
+
+<div class="row">
+    <div class="label">{% if user["language"] == "Portuguese" %}Data e Hora{% elif user["language"] == "Spanish" %}Fecha y Hora{% else %}Date & Time{% endif %}</div>
+    <div class="value">{{ tx["created_at"] }}</div>
+</div>
+
+<div class="row">
+    <div class="label">Status</div>
+    <div class="value status{% if tx["status"] == "Failed" %} failed{% endif %}">{% if tx["status"] == "Failed" %}{% if user["language"] == "Portuguese" %}Falhou{% elif user["language"] == "Spanish" %}Fallido{% else %}Failed{% endif %}{% else %}{% if user["language"] == "Portuguese" %}Sucesso{% elif user["language"] == "Spanish" %}Exitoso{% else %}Successful{% endif %}{% endif %}</div>
+</div>
+
+</div>
 
 <div class="section-title">
 {% if user["language"] == "Portuguese" %}DESCRIÇÃO{% elif user["language"] == "Spanish" %}DESCRIPCIÓN{% else %}DESCRIPTION{% endif %}
@@ -3492,20 +3489,31 @@ body {
 async function shareReceipt() {
     const receipt = document.querySelector(".receipt");
 
-    if (!receipt || typeof html2canvas === "undefined") {
-        alert("Receipt image is not available yet.");
+    if (!receipt) {
+        alert("Receipt not found. Please reload the page.");
+        return;
+    }
+
+    if (typeof html2canvas === "undefined") {
+        alert("Receipt image service did not load. Please refresh the page.");
         return;
     }
 
     try {
         const canvas = await html2canvas(receipt, {
             backgroundColor: "#ffffff",
-            scale: 2
+            scale: 2,
+            useCORS: true,
+            logging: false
         });
 
-        const blob = await new Promise(resolve =>
-            canvas.toBlob(resolve, "image/png")
-        );
+        const blob = await new Promise(resolve => {
+            canvas.toBlob(resolve, "image/png");
+        });
+
+        if (!blob || blob.size === 0) {
+            throw new Error("Receipt image generation failed.");
+        }
 
         const file = new File(
             [blob],
@@ -3513,20 +3521,41 @@ async function shareReceipt() {
             { type: "image/png" }
         );
 
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        if (
+            navigator.share &&
+            navigator.canShare &&
+            navigator.canShare({ files: [file] })
+        ) {
             await navigator.share({
                 title: "PrimeVault Receipt",
                 files: [file]
             });
-        } else {
-            const link = document.createElement("a");
-            link.download = "PrimeVault-Receipt.png";
-            link.href = canvas.toDataURL("image/png");
-            link.click();
+            return;
         }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = "PrimeVault-Receipt.png";
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+        alert(
+            "Your receipt was downloaded. " +
+            "Open your Downloads folder to share it."
+        );
+
     } catch (error) {
-        console.error(error);
-        alert("Unable to create the receipt image.");
+        if (error.name === "AbortError") return;
+
+        console.error("Share Receipt error:", error);
+
+        alert("Unable to share the receipt. Please try again.");
     }
 }
 </script>
