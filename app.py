@@ -256,13 +256,16 @@ def init_db():
         )
     """)
 
+    cur.execute("SAVEPOINT other_banks_country_migration")
     try:
         cur.execute(
             "ALTER TABLE other_banks ADD COLUMN country_name "
             "TEXT NOT NULL DEFAULT 'Unassigned'"
         )
+        cur.execute("RELEASE SAVEPOINT other_banks_country_migration")
     except Exception:
-        pass
+        cur.execute("ROLLBACK TO SAVEPOINT other_banks_country_migration")
+        cur.execute("RELEASE SAVEPOINT other_banks_country_migration")
 
     cur.execute(f"""
         CREATE TABLE IF NOT EXISTS built_in_bank_names (
