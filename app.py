@@ -1,3 +1,5 @@
+from html import escape
+from urllib.parse import quote
 import secrets
 from flask import Flask, request, redirect, url_for, session, render_template_string, send_file, jsonify
 import sqlite3
@@ -17,6 +19,20 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = "primevault-local-simulator-secret"
+
+def bank_csrf_token():
+    token = session.get("bank_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["bank_csrf_token"] = token
+    return token
+
+
+def valid_bank_csrf():
+    submitted = request.form.get("csrf_token", "")
+    expected = session.get("bank_csrf_token", "")
+    return bool(submitted and expected and secrets.compare_digest(submitted, expected))
+
 app.config["SESSION_PERMANENT"] = True
 app.config["PERMANENT_SESSION_LIFETIME"] = 60 * 60 * 24 * 30
 
@@ -230,6 +246,53 @@ def init_db():
     except Exception:
         cur.execute("ROLLBACK TO SAVEPOINT support_notification_migration")
         cur.execute("RELEASE SAVEPOINT support_notification_migration")
+
+    cur.execute(f"""
+        CREATE TABLE IF NOT EXISTS other_banks (
+            id {id_type},
+            bank_name TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL,
+            country_name TEXT NOT NULL DEFAULT 'Unassigned'
+        )
+    """)
+
+    try:
+        cur.execute(
+            "ALTER TABLE other_banks ADD COLUMN country_name "
+            "TEXT NOT NULL DEFAULT 'Unassigned'"
+        )
+    except Exception:
+        pass
+
+    cur.execute(f"""
+        CREATE TABLE IF NOT EXISTS built_in_bank_names (
+            id {id_type},
+            country_name TEXT NOT NULL,
+            original_name TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            UNIQUE(country_name, original_name)
+        )
+    """)
+
+    cur.execute(f"""
+        CREATE TABLE IF NOT EXISTS bank_countries (
+            id {id_type},
+            country_name TEXT NOT NULL UNIQUE,
+            base_key TEXT UNIQUE
+        )
+    """)
+
+    for country_name in (
+        "Brazil", "United Kingdom", "China", "United States"
+    ):
+        try:
+            cur.execute(
+                "INSERT INTO bank_countries (country_name, base_key) "
+                "VALUES (?, ?)",
+                (country_name, country_name)
+            )
+        except Exception:
+            pass
 
     admin = cur.execute(
         "SELECT id FROM users WHERE username = ?",
@@ -1165,7 +1228,7 @@ def home():
     if "user_id" in session:
         user = current_user()
         if user and user["role"] == "admin":
-            return redirect(url_for("admin"))
+            return redirect(url_for("admin_bank_management"))
         return redirect(url_for("dashboard"))
     return redirect(url_for("login"))
 
@@ -1195,7 +1258,7 @@ def login():
                 return redirect(url_for("verify", user_id=user["id"]))
 
             if user["role"] == "admin":
-                return redirect(url_for("admin"))
+                return redirect(url_for("admin_bank_management"))
 
             return redirect(url_for("dashboard"))
 
@@ -2433,6 +2496,73 @@ def transfer():
         WHERE user_id = ?
     """, (user["id"],)).fetchone()
 
+    bank_countries = conn.execute(
+        "SELECT country_name, base_key FROM bank_countries ORDER BY id"
+    ).fetchall()
+
+    custom_bank_rows = conn.execute(
+        "SELECT id, bank_name, country_name FROM other_banks ORDER BY bank_name"
+    ).fetchall()
+
+    built_in_banks = {
+        "Brazil": [
+            "Banco Agibank S", "PicPay", "PagBank", "Santander",
+            "Itaú", "Nubank", "Caixa"
+        ],
+        "United Kingdom": [
+            "HSBC UK", "Barclays", "Lloyds Bank", "NatWest",
+            "Santander UK"
+        ],
+        "China": [
+            "Industrial and Commercial Bank of China (ICBC)",
+            "China Construction Bank (CCB)",
+            "Agricultural Bank of China (ABC)",
+            "Bank of China (BOC)",
+            "Bank of Communications (BoCom)"
+        ],
+        "United States": [
+            "JPMorgan Chase Bank", "Bank of America",
+            "Wells Fargo Bank", "Citibank", "U.S. Bank"
+        ],
+    }
+
+    renamed_rows = conn.execute(
+        "SELECT country_name, original_name, display_name FROM built_in_bank_names"
+    ).fetchall()
+    renamed = {
+        (row["country_name"], row["original_name"]): row["display_name"]
+        for row in renamed_rows
+    }
+
+    bank_groups = []
+    for country in bank_countries:
+        country_name = country["country_name"]
+        base_key = country["base_key"]
+        banks = [
+            renamed.get((country_name, name), name)
+            for name in built_in_banks.get(base_key, [])
+        ]
+        banks.extend(
+            row["bank_name"] for row in custom_bank_rows
+            if row["country_name"] == country_name
+        )
+        bank_groups.append({
+            "country_name": country_name,
+            "banks": banks
+        })
+
+    unassigned_banks = [
+        row["bank_name"] for row in custom_bank_rows
+        if row["country_name"] not in [
+            country["country_name"] for country in bank_countries
+        ]
+    ]
+    if unassigned_banks:
+        bank_groups.append({
+            "country_name": "Unassigned",
+            "banks": unassigned_banks
+        })
+
     currencies = {
         "BRL": {"name": "Brazilian Real", "symbol": "R$", "rate": 5.1024},
         "USD": {"name": "US Dollar", "symbol": "$", "rate": 1.0},
@@ -2949,32 +3079,12 @@ textarea {
 
 <select name="receiver_bank" id="bankName">
     <option value="">{% if user["language"] == "Portuguese" %}Selecionar banco{% elif user["language"] == "Spanish" %}Seleccionar banco{% else %}Select bank{% endif %}</option>
-<option disabled>Brazil</option>
-<option>Banco Agibank S</option>
-<option>PicPay</option>
-<option>PagBank</option>
-<option>Santander</option>
-<option>Itaú</option>
-<option>Nubank</option>
-<option>Caixa</option>
-<option disabled>United Kingdom</option>
-<option>HSBC UK</option>
-<option>Barclays</option>
-<option>Lloyds Bank</option>
-<option>NatWest</option>
-<option>Santander UK</option>
-<option disabled>China</option>
-<option>Industrial and Commercial Bank of China (ICBC)</option>
-<option>China Construction Bank (CCB)</option>
-<option>Agricultural Bank of China (ABC)</option>
-<option>Bank of China (BOC)</option>
-<option>Bank of Communications (BoCom)</option>
-<option disabled>United States</option>
-<option>JPMorgan Chase Bank</option>
-<option>Bank of America</option>
-<option>Wells Fargo Bank</option>
-<option>Citibank</option>
-<option>U.S. Bank</option>
+{% for group in bank_groups %}
+<option disabled>{{ group["country_name"] }}</option>
+{% for bank_name in group["banks"] %}
+<option>{{ bank_name }}</option>
+{% endfor %}
+{% endfor %}
 </select>
 </div>
 
@@ -3138,7 +3248,7 @@ window.addEventListener("load", function() {
 
 </body>
 </html>
-""", user=user, account=account, transfer_error=transfer_error, mode=mode, selected_currency=selected_currency)
+""", user=user, account=account, transfer_error=transfer_error, mode=mode, selected_currency=selected_currency, bank_groups=bank_groups)
 
 
 @app.route("/receipt/<transaction_id>")
@@ -5841,11 +5951,28 @@ def admin():
           AND is_read = 0
           AND support_user_id IS NOT NULL
     """, (user["id"],)).fetchone()["count"]
+    bank_rows = conn.execute(
+        "SELECT id, bank_name FROM other_banks ORDER BY bank_name"
+    ).fetchall()
+    bank_manager_rows = "".join(
+        f'<div style="display:flex;justify-content:space-between;'
+        f'align-items:center;gap:10px;margin:8px 0;">'
+        f'<span>{escape(str(row["bank_name"]))}</span>'
+        f'<form method="POST" action="/admin/banks/delete/{row["id"]}" '
+        f'style="margin:0;">'
+        f'<input type="hidden" name="csrf_token" value="{bank_csrf_token()}">'
+        f'<button type="submit">Delete</button></form>'
+        f'</div>'
+        for row in bank_rows
+    ) or '<p class="small">No additional banks added yet.</p>'
+
     conn.close()
 
     total_users = len(users)
     active_users = sum(1 for u in users if u["active"])
     deactivated_users = total_users - active_users
+
+
 
 
 
@@ -5953,6 +6080,15 @@ def admin():
 </div>
 
 <div class="card">
+    <h3>🏦 Bank Management</h3>
+    <p class="small">Manage countries and their banks from a dedicated page.</p>
+    <a class="button" href="/admin/banks"
+       style="display:inline-block;text-decoration:none;">
+       Open Bank Management →
+    </a>
+</div>
+
+<div class="card">
     <h3>🔗 User Registration</h3>
 
     <p class="small">
@@ -6030,6 +6166,358 @@ function copyRegistrationLink() {{
 """
 
     return page("Admin Panel", html)
+
+
+@app.route("/admin/banks/add", methods=["POST"])
+def admin_add_bank():
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+    if not valid_bank_csrf():
+        return "Invalid or expired form token. Refresh the admin page and try again.", 400
+
+    bank_name = request.form.get("bank_name", "").strip()
+    if not bank_name or len(bank_name) > 100:
+        return redirect(url_for("admin_bank_management", country=request.form.get("country_name", "").strip()))
+
+    country_name = request.form.get("country_name", "").strip()
+    if not country_name:
+        return redirect(url_for("admin_bank_management"))
+
+    conn = db()
+    try:
+        country = conn.execute(
+            "SELECT id FROM bank_countries WHERE country_name = ?",
+            (country_name,)
+        ).fetchone()
+        if not country:
+            return redirect(url_for("admin_bank_management"))
+        conn.execute(
+            "INSERT INTO other_banks (bank_name, created_at, country_name) VALUES (?, ?, ?)",
+            (bank_name, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), country_name)
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+    finally:
+        conn.close()
+
+    return redirect(url_for("admin_bank_management", country=request.form.get("country_name", "").strip()))
+
+
+@app.route("/admin/banks/delete/<int:bank_id>", methods=["POST"])
+def admin_delete_bank(bank_id):
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+    if not valid_bank_csrf():
+        return "Invalid or expired form token. Refresh the admin page and try again.", 400
+
+    conn = db()
+    conn.execute("DELETE FROM other_banks WHERE id = ?", (bank_id,))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("admin_bank_management"))
+
+
+
+@app.route("/admin/banks", methods=["GET"])
+def admin_bank_management():
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+
+    conn = db()
+    try:
+        countries = conn.execute(
+            "SELECT id, country_name, base_key FROM bank_countries ORDER BY id"
+        ).fetchall()
+        banks = conn.execute(
+            "SELECT id, bank_name, country_name FROM other_banks ORDER BY country_name, bank_name"
+        ).fetchall()
+        overrides = conn.execute(
+            "SELECT country_name, original_name, display_name FROM built_in_bank_names"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    built_in_banks = {
+        "Brazil": [
+            "Banco Agibank S", "PicPay", "PagBank", "Santander",
+            "Itaú", "Nubank", "Caixa"
+        ],
+        "United Kingdom": [
+            "HSBC UK", "Barclays", "Lloyds Bank", "NatWest", "Santander UK"
+        ],
+        "China": [
+            "Industrial and Commercial Bank of China (ICBC)",
+            "China Construction Bank (CCB)",
+            "Agricultural Bank of China (ABC)",
+            "Bank of China (BOC)",
+            "Bank of Communications (BoCom)"
+        ],
+        "United States": [
+            "JPMorgan Chase Bank", "Bank of America",
+            "Wells Fargo Bank", "Citibank", "U.S. Bank"
+        ],
+    }
+    renamed = {
+        (r["country_name"], r["original_name"]): r["display_name"]
+        for r in overrides
+    }
+    country_names = [str(c["country_name"]) for c in countries]
+    selected_country = request.args.get("country", "").strip()
+    if selected_country not in country_names:
+        selected_country = country_names[0] if country_names else ""
+
+    token = escape(bank_csrf_token())
+    parts = [
+        '<div class="card"><a href="/admin">← Back to Admin Panel</a>',
+        '<h2>🏦 Bank Management</h2>',
+        '<p>Manage built-in and custom banks by country.</p></div>',
+        '<div class="card"><h3>Select Country</h3>',
+        '<form method="get" action="/admin/banks"><select name="country" onchange="this.form.submit()">'
+    ]
+    for name in country_names:
+        selected = " selected" if name == selected_country else ""
+        parts.append(
+            f'<option value="{escape(name)}"{selected}>{escape(name)}</option>'
+        )
+    parts.append('</select><button type="submit">Show Banks</button></form></div>')
+
+    parts.append(
+        '<div class="card"><h3>Add a Country</h3>'
+        '<form method="post" action="/admin/banks/countries/add">'
+        f'<input type="hidden" name="csrf_token" value="{token}">'
+        '<label>Country name</label><input name="country_name" maxlength="100" required>'
+        '<button type="submit">Add Country</button></form></div>'
+    )
+
+    if selected_country:
+        country_row = next(c for c in countries if c["country_name"] == selected_country)
+        originals = built_in_banks.get(country_row["base_key"], [])
+        parts.append(f'<div class="card"><h3>{escape(selected_country)} — Built-in Banks</h3>')
+        if originals:
+            for original in originals:
+                shown = renamed.get((selected_country, original), original)
+                parts.append(
+                    '<form method="post" action="/admin/banks/rename-built-in" '
+                    'style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">'
+                    f'<input type="hidden" name="csrf_token" value="{token}">'
+                    f'<input type="hidden" name="country_name" value="{escape(selected_country)}">'
+                    f'<input type="hidden" name="original_name" value="{escape(original)}">'
+                    f'<input name="display_name" maxlength="100" required value="{escape(shown)}" '
+                    'style="flex:1;min-width:180px;">'
+                    '<button type="submit">Save Name</button></form>'
+                )
+        else:
+            parts.append('<p>No built-in banks for this country.</p>')
+        parts.append('</div>')
+
+        parts.append(
+            '<div class="card"><h3>Add a Bank</h3>'
+            '<form method="post" action="/admin/banks/add">'
+            f'<input type="hidden" name="csrf_token" value="{token}">'
+            '<label>Bank name</label><input name="bank_name" maxlength="100" required>'
+            f'<input type="hidden" name="country_name" value="{escape(selected_country)}">'
+            '<button type="submit">Add Bank</button></form></div>'
+        )
+
+        selected_banks = [b for b in banks if b["country_name"] == selected_country]
+        parts.append(f'<div class="card"><h3>{escape(selected_country)} — Custom Banks</h3>')
+        if not selected_banks:
+            parts.append('<p>No custom banks in this country yet.</p>')
+        for bank in selected_banks:
+            bank_id = int(bank["id"])
+            bank_name = escape(str(bank["bank_name"]))
+            parts.append(
+                '<div style="padding:14px 0;border-bottom:1px solid #ddd;">'
+                '<form method="post" action="/admin/banks/rename-custom" '
+                'style="display:flex;gap:8px;flex-wrap:wrap;">'
+                f'<input type="hidden" name="csrf_token" value="{token}">'
+                f'<input type="hidden" name="bank_id" value="{bank_id}">'
+                f'<input name="bank_name" maxlength="100" required value="{bank_name}" '
+                'style="flex:1;min-width:180px;">'
+                '<button type="submit">Rename</button></form>'
+                f'<form method="post" action="/admin/banks/move/{bank_id}" style="margin-top:8px;">'
+                f'<input type="hidden" name="csrf_token" value="{token}"><select name="country_name">'
+            )
+            for name in country_names:
+                selected = " selected" if name == selected_country else ""
+                parts.append(
+                    f'<option value="{escape(name)}"{selected}>{escape(name)}</option>'
+                )
+            parts.append(
+                '</select><button type="submit">Move Bank</button></form>'
+                f'<form method="post" action="/admin/banks/delete/{bank_id}" '
+                'onsubmit="return confirm(\'Delete this custom bank?\')">'
+                f'<input type="hidden" name="csrf_token" value="{token}">'
+                '<button type="submit">Delete Bank</button></form></div>'
+            )
+        parts.append('</div>')
+
+    return page("Bank Management", "".join(parts))
+
+
+@app.route("/admin/banks/rename-built-in", methods=["POST"])
+def admin_rename_builtin_bank():
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+    if not valid_bank_csrf():
+        return "Invalid or expired form token. Refresh the page and try again.", 400
+
+    country = request.form.get("country_name", "").strip()
+    original = request.form.get("original_name", "").strip()
+    display = request.form.get("display_name", "").strip()
+    if not country or not original or not display or len(display) > 100:
+        return redirect(url_for("admin_bank_management"))
+
+    conn = db()
+    try:
+        conn.execute(
+            """INSERT INTO built_in_bank_names
+            (country_name, original_name, display_name)
+            VALUES (?, ?, ?)
+            ON CONFLICT(country_name, original_name)
+            DO UPDATE SET display_name = excluded.display_name""",
+            (country, original, display)
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    return redirect(url_for("admin_bank_management") + "?country=" + quote(country))
+
+
+@app.route("/admin/banks/rename-custom", methods=["POST"])
+def admin_rename_custom_bank():
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+    if not valid_bank_csrf():
+        return "Invalid or expired form token. Refresh the page and try again.", 400
+
+    bank_id = request.form.get("bank_id", type=int)
+    name = request.form.get("bank_name", "").strip()
+    if not bank_id or not name or len(name) > 100:
+        return redirect(url_for("admin_bank_management"))
+
+    conn = db()
+    try:
+        bank = conn.execute(
+            "SELECT country_name FROM other_banks WHERE id = ?", (bank_id,)
+        ).fetchone()
+        if bank:
+            conn.execute(
+                "UPDATE other_banks SET bank_name = ? WHERE id = ?",
+                (name, bank_id)
+            )
+            conn.commit()
+            country = str(bank["country_name"])
+        else:
+            country = ""
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    return redirect(url_for("admin_bank_management") + "?country=" + quote(country))
+
+
+@app.route("/admin/banks/countries/add", methods=["POST"])
+def admin_add_bank_country():
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+    if not valid_bank_csrf():
+        return "Invalid or expired form token. Refresh the page and try again.", 400
+
+    name = request.form.get("country_name", "").strip()
+    if not name or len(name) > 100:
+        return redirect(url_for("admin_bank_management"))
+
+    conn = db()
+    try:
+        conn.execute(
+            "INSERT INTO bank_countries (country_name, base_key) VALUES (?, NULL)",
+            (name,)
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+    finally:
+        conn.close()
+    return redirect(url_for("admin_bank_management"))
+
+
+@app.route("/admin/banks/countries/rename/<int:country_id>", methods=["POST"])
+def admin_rename_bank_country(country_id):
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+    if not valid_bank_csrf():
+        return "Invalid or expired form token. Refresh the page and try again.", 400
+
+    name = request.form.get("country_name", "").strip()
+    if not name or len(name) > 100:
+        return redirect(url_for("admin_bank_management"))
+
+    conn = db()
+    try:
+        country = conn.execute(
+            "SELECT country_name FROM bank_countries WHERE id = ?",
+            (country_id,)
+        ).fetchone()
+        if country:
+            old_name = country["country_name"]
+            conn.execute(
+                "UPDATE bank_countries SET country_name = ? WHERE id = ?",
+                (name, country_id)
+            )
+            conn.execute(
+                "UPDATE other_banks SET country_name = ? WHERE country_name = ?",
+                (name, old_name)
+            )
+            conn.commit()
+    except Exception:
+        conn.rollback()
+    finally:
+        conn.close()
+    return redirect(url_for("admin_bank_management"))
+
+
+@app.route("/admin/banks/move/<int:bank_id>", methods=["POST"])
+def admin_move_bank(bank_id):
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login"))
+    if not valid_bank_csrf():
+        return "Invalid or expired form token. Refresh the page and try again.", 400
+
+    country_name = request.form.get("country_name", "").strip()
+    conn = db()
+    try:
+        exists = conn.execute(
+            "SELECT id FROM bank_countries WHERE country_name = ?",
+            (country_name,)
+        ).fetchone()
+        if exists:
+            conn.execute(
+                "UPDATE other_banks SET country_name = ? WHERE id = ?",
+                (country_name, bank_id)
+            )
+            conn.commit()
+    except Exception:
+        conn.rollback()
+    finally:
+        conn.close()
+    return redirect(url_for("admin_bank_management"))
 
 
 @app.route("/admin/schedule-block/<int:user_id>", methods=["POST"])
