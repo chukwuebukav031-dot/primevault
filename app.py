@@ -46,14 +46,16 @@ class CompatCursor:
         self._cursor = cursor
 
     def execute(self, sql, params=()):
-        if USE_POSTGRES:
+        if USE_POSTGRES and isinstance(sql, str):
             sql = sql.replace("?", "%s")
-        return self._cursor.execute(sql, params)
+        self._cursor.execute(sql, params)
+        return self
 
     def executemany(self, sql, params_seq):
-        if USE_POSTGRES:
+        if USE_POSTGRES and isinstance(sql, str):
             sql = sql.replace("?", "%s")
-        return self._cursor.executemany(sql, params_seq)
+        self._cursor.executemany(sql, params_seq)
+        return self
 
     def __getattr__(self, name):
         return getattr(self._cursor, name)
@@ -62,14 +64,18 @@ class CompatCursor:
 class CompatConnection:
     def __init__(self, conn):
         self._conn = conn
-
+        
+    class CompatConnection:
+    def __init__(self, conn):
+        self._conn = conn
+        
     def cursor(self):
         return CompatCursor(self._conn.cursor())
 
     def execute(self, sql, params=()):
-        if USE_POSTGRES:
-            sql = sql.replace("?", "%s")
-        return self._conn.execute(sql, params)
+        cur = self.cursor()
+        cur.execute(sql, params)
+        return cur
 
     def commit(self):
         return self._conn.commit()
@@ -94,10 +100,7 @@ def db():
 
 def generate_account_number():
     return "".join(random.choices(string.digits, k=10))
-
-
-def generate_code():
-    return "".join(random.choices(string.digits, k=6))
+    
 
 
 def send_verification_email(to_email, code):
