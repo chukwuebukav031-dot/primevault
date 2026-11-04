@@ -282,6 +282,15 @@ def init_db():
             (country_name, country_name)
         )
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS built_in_bank_names (
+            country_name TEXT NOT NULL,
+            original_name TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            PRIMARY KEY (country_name, original_name)
+        )
+    """)
+
     # This securely fetches or checks the admin details without leaving the line open
     cur.execute("SELECT * FROM users WHERE role = 'admin'")
     admin = cur.fetchone()
