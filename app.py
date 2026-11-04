@@ -65,10 +65,6 @@ class CompatConnection:
     def __init__(self, conn):
         self._conn = conn
         
-    class CompatConnection:
-    def __init__(self, conn):
-        self._conn = conn
-        
     def cursor(self):
         return CompatCursor(self._conn.cursor())
 
