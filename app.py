@@ -18,7 +18,7 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = "primevault-local-simulator-secret"
+app.secret_key = os.getenv("SECRET_KEY")
 
 def bank_csrf_token():
     token = session.get("bank_csrf_token")
