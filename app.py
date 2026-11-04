@@ -64,7 +64,7 @@ class CompatCursor:
 class CompatConnection:
     def __init__(self, conn):
         self._conn = conn
-        
+
     def cursor(self):
         return CompatCursor(self._conn.cursor())
 
@@ -78,7 +78,6 @@ class CompatConnection:
 
     def rollback(self):
         return self._conn.rollback()
-
     def close(self):
         return self._conn.close()
 
