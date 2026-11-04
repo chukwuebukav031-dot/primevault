@@ -267,17 +267,7 @@ def init_db():
         cur.execute("ROLLBACK TO SAVEPOINT other_banks_country_migration")
         cur.execute("RELEASE SAVEPOINT other_banks_country_migration")
 
-    cur.execute(f"""
-        CREATE TABLE IF NOT EXISTS built_in_bank_names (
-            id {id_type},
-            country_name TEXT NOT NULL,
-            original_name TEXT NOT NULL,
-            display_name TEXT NOT NULL,
-            UNIQUE(country_name, original_name)
-        )
-    """)
-
-    cur.execute(f"""
+        cur.execute(f"""
         CREATE TABLE IF NOT EXISTS bank_countries (
             id {id_type},
             country_name TEXT NOT NULL UNIQUE,
@@ -286,18 +276,17 @@ def init_db():
     """)
 
     for country_name in (
-    "Brazil", "United Kingdom", "China", "United States"
-):
-    cur.execute(
-        "INSERT INTO bank_countries (country_name, base_key) "
-        "VALUES (?, ?) ON CONFLICT (country_name) DO NOTHING",
-        (country_name, country_name)
-    )
+        "Brazil", "United Kingdom", "China", "United States"
+    ):
+        cur.execute(
+            "INSERT INTO bank_countries (country_name, base_key) "
+            "VALUES (%s, %s) ON CONFLICT (country_name) DO NOTHING",
+            (country_name, country_name)
+        )
 
-    admin = cur.execute(
-        "SELECT id FROM users WHERE username = ?",
-        ("admin",)
-    ).fetchone()
+    # This securely fetches or checks the admin details without leaving the line open
+    cur.execute("SELECT * FROM users WHERE role = 'admin'")
+    admin = cur.fetchone()
 
     if not admin:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -307,7 +296,7 @@ def init_db():
             (username, surname, email, phone, country, password,
              transfer_pin, gender, profile_picture, language,
              verified, role, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             "admin",
             "Administrator",
@@ -325,10 +314,11 @@ def init_db():
         ))
 
         if USE_POSTGRES:
-            admin_id = cur.execute(
-                "SELECT id FROM users WHERE username = ?",
+            cur.execute(
+                "SELECT id FROM users WHERE username = %s",
                 ("admin",)
-            ).fetchone()["id"]
+            )
+            admin_id = cur.fetchone()[0]
         else:
             admin_id = cur.lastrowid
 
@@ -336,7 +326,7 @@ def init_db():
             INSERT INTO accounts
             (user_id, account_number, bank_name, balance,
              transfer_enabled, account_limit)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """, (
             admin_id,
             "PVADMIN0001",
@@ -354,6 +344,7 @@ def init_db():
     except Exception:
         cur.execute("ROLLBACK TO SAVEPOINT balance_visibility_migration")
         cur.execute("RELEASE SAVEPOINT balance_visibility_migration")
+        
 
     # Add persistent currency preference to existing users.
     try:
