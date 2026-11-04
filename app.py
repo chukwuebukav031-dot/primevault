@@ -1,6 +1,7 @@
 from html import escape
 from urllib.parse import quote
 import secrets
+from werkzeug.exceptions import HTTPException
 from flask import Flask, request, redirect, url_for, session, render_template_string, send_file, jsonify
 import sqlite3
 import os
@@ -18,6 +19,15 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+
+@app.errorhandler(Exception)
+def log_application_error(error):
+    if isinstance(error, HTTPException):
+        return error
+    app.logger.exception("PRIMEVAULT APPLICATION ERROR")
+    return "Internal Server Error", 500
+
+
 app.secret_key = os.getenv("SECRET_KEY")
 
 def bank_csrf_token():
