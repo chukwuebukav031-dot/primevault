@@ -286,16 +286,13 @@ def init_db():
     """)
 
     for country_name in (
-        "Brazil", "United Kingdom", "China", "United States"
-    ):
-        try:
-            cur.execute(
-                "INSERT INTO bank_countries (country_name, base_key) "
-                "VALUES (?, ?)",
-                (country_name, country_name)
-            )
-        except Exception:
-            pass
+    "Brazil", "United Kingdom", "China", "United States"
+):
+    cur.execute(
+        "INSERT INTO bank_countries (country_name, base_key) "
+        "VALUES (?, ?) ON CONFLICT (country_name) DO NOTHING",
+        (country_name, country_name)
+    )
 
     admin = cur.execute(
         "SELECT id FROM users WHERE username = ?",
