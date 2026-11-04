@@ -105,6 +105,10 @@ def db():
 
 def generate_account_number():
     return "".join(random.choices(string.digits, k=10))
+
+
+def generate_code():
+    return "".join(secrets.choice(string.digits) for _ in range(6))
     
 
 
@@ -288,7 +292,7 @@ def init_db():
     ):
         cur.execute(
             "INSERT INTO bank_countries (country_name, base_key) "
-            "VALUES (%s, %s) ON CONFLICT (country_name) DO NOTHING",
+            "VALUES (?, ?) ON CONFLICT (country_name) DO NOTHING",
             (country_name, country_name)
         )
 
@@ -313,7 +317,7 @@ def init_db():
             (username, surname, email, phone, country, password,
              transfer_pin, gender, profile_picture, language,
              verified, role, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             "admin",
             "Administrator",
@@ -332,10 +336,10 @@ def init_db():
 
         if USE_POSTGRES:
             cur.execute(
-                "SELECT id FROM users WHERE username = %s",
+                "SELECT id FROM users WHERE username = ?",
                 ("admin",)
             )
-            admin_id = cur.fetchone()[0]
+            admin_id = cur.fetchone()["id"]
         else:
             admin_id = cur.lastrowid
 
@@ -343,7 +347,7 @@ def init_db():
             INSERT INTO accounts
             (user_id, account_number, bank_name, balance,
              transfer_enabled, account_limit)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?, ?)
         """, (
             admin_id,
             "PVADMIN0001",
