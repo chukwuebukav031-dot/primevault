@@ -265,7 +265,7 @@ def init_db():
         cur.execute("ROLLBACK TO SAVEPOINT other_banks_country_migration")
         cur.execute("RELEASE SAVEPOINT other_banks_country_migration")
 
-        cur.execute(f"""
+    cur.execute(f"""
         CREATE TABLE IF NOT EXISTS bank_countries (
             id {id_type},
             country_name TEXT NOT NULL UNIQUE,
